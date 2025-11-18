@@ -1,317 +1,517 @@
 <!DOCTYPE html>
-<html lang="en" class="h-full bg-gray-900">
+<html lang="en" class="h-full">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Martial Arts Manager 2026</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Load Three.js 3D Library -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
         body {
             font-family: 'Inter', sans-serif;
+            height: 100%;
+            margin: 0;
+            padding: 0;
+            color: #e5e7eb; /* text-gray-200 */
+            background-color: #111827; /* gray-900 */
+            overflow: hidden; /* Kill body scroll completely */
         }
-        /* Custom scrollbar for the event log */
-        .log-container::-webkit-scrollbar {
+        
+        /* Custom scrollbar */
+        .custom-scroll::-webkit-scrollbar {
             width: 8px;
         }
-        .log-container::-webkit-scrollbar-track {
-            background: #2d3748; /* gray-800 */
+        .custom-scroll::-webkit-scrollbar-track {
+            background: rgba(31, 41, 55, 0.5);
         }
-        .log-container::-webkit-scrollbar-thumb {
-            background: #4a5568; /* gray-600 */
+        .custom-scroll::-webkit-scrollbar-thumb {
+            background: #4b5563;
             border-radius: 4px;
         }
-        .log-container::-webkit-scrollbar-thumb:hover {
-            background: #718096; /* gray-500 */
+        .custom-scroll::-webkit-scrollbar-thumb:hover {
+            background: #6b7280;
+        }
+
+        /* The 3D canvas */
+        #bg-canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 0;
+            pointer-events: none; /* Let clicks pass through to UI */
+        }
+
+        /* The UI Wrapper */
+        #app {
+            position: relative;
+            z-index: 10;
+            height: 100vh; /* Force full viewport height */
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Glassmorphism Panels */
+        .glass-panel {
+            background-color: rgba(17, 24, 39, 0.95); /* Darker, more solid background */
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.5), 0 2px 4px -1px rgba(0, 0, 0, 0.3);
+        }
+
+        /* Modals */
+        .modal-content {
+            background-color: rgba(31, 41, 55, 0.98);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5), 0 10px 10px -5px rgba(0, 0, 0, 0.3);
+        }
+
+        /* Fight Night Modal - "The Ring" */
+        #modal-fight-sim {
+            background: linear-gradient(135deg, rgba(69, 10, 10, 0.95), rgba(127, 29, 29, 0.95));
+            border: 2px solid #ef4444;
+        }
+        #modal-fight-sim h2 { color: #fca5a5; }
+
+        /* Shady Modals */
+        #modal-bribe-offer, #modal-mob-approach {
+            background: linear-gradient(135deg, rgba(30, 27, 75, 0.95), rgba(49, 46, 129, 0.95));
+            border: 1px solid #a5b4fc;
         }
     </style>
 </head>
-<body class="h-full text-gray-100">
-    <div id="app" class="flex flex-col h-screen">
+<body>
+    
+    <!-- 3D Background -->
+    <canvas id="bg-canvas"></canvas>
+
+    <div id="app">
 
         <!-- Character Creation Screen -->
-        <div id="creation-screen" class="flex items-center justify-center h-full p-4">
-            <div class="w-full max-w-md bg-gray-800 rounded-lg shadow-xl p-8">
+        <div id="creation-screen" class="flex-grow flex items-center justify-center p-4 w-full">
+            <div class="glass-panel w-full max-w-md rounded-xl p-8">
                 <h1 class="text-3xl font-bold text-center text-white mb-6">Create Your Legacy</h1>
                 
-                <div class="mb-4">
-                    <label for="player-name" class="block text-sm font-medium text-gray-300 mb-1">Enter Your Name</label>
-                    <input type="text" id="player-name" class="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="e.g., John 'Hands of Stone' Doe">
+                <div class="mb-5">
+                    <label for="player-name" class="block text-sm font-semibold text-gray-300 mb-2">Fighter Name</label>
+                    <input type="text" id="player-name" class="w-full px-4 py-3 bg-gray-800 border border-gray-600 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all" placeholder="e.g. 'Iron' Mike">
                 </div>
 
                 <div class="mb-6">
-                    <label class="block text-sm font-medium text-gray-300 mb-1">Choose Your Path</label>
-                    <div class="grid grid-cols-2 gap-4">
-                        <button onclick="selectPath('fighter')" class="career-path-btn flex flex-col items-center justify-center p-4 bg-gray-700 rounded-lg hover:bg-blue-600 hover:text-white transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-gray-800">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10 mb-2" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clip-rule="evenodd" /></svg>
+                    <label class="block text-sm font-semibold text-gray-300 mb-2">Career Path</label>
+                    <div class="grid grid-cols-2 gap-3">
+                        <button onclick="selectPath('fighter')" class="career-path-btn flex flex-col items-center justify-center p-4 bg-gray-800 rounded-lg border border-gray-700 hover:bg-blue-600 hover:border-blue-500 hover:text-white transition-all duration-200 group">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 mb-2 text-gray-400 group-hover:text-white" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clip-rule="evenodd" /></svg>
                             <span class="font-medium">Fighter</span>
                         </button>
-                        <button disabled title="Coming in a future version!" class="disabled-btn flex flex-col items-center justify-center p-4 bg-gray-700 rounded-lg opacity-50 cursor-not-allowed">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10 mb-2" viewBox="0 0 20 20" fill="currentColor"><path d="M13 6a3 3 0 11-6 0 3 3 0 016 0zM18 8a2 2 0 11-4 0 2 2 0 014 0zM14 15a4 4 0 00-8 0v-1h8v1zM3 8a2 2 0 11-4 0 2 2 0 014 0zM6 15a4 4 0 00-8 0v-1h8v1z" /><path d="M11 3.055A9.001 9.001 0 0119 12v1a4 4 0 01-8 0v-1a9.001 9.001 0 01-1.464-5.062l.156.311A4.002 4.002 0 0113 11a4 4 0 01-4 4 4 4 0 01-4-4 4 4 0 011.308-2.752l.156-.311A9.001 9.001 0 011 12v1a4 4 0 01-8 0v-1a9.001 9.001 0 0116.945-4.945z" /></svg>
-                            <span class="font-medium">Coach</span>
+                        <button disabled class="flex flex-col items-center justify-center p-4 bg-gray-900 rounded-lg border border-gray-800 opacity-50 cursor-not-allowed">
+                            <span class="text-sm font-medium text-gray-500">Coach (Soon)</span>
                         </button>
-                        <button disabled title="Coming in a future version!" class="disabled-btn flex flex-col items-center justify-center p-4 bg-gray-700 rounded-lg opacity-50 cursor-not-allowed">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10 mb-2" viewBox="0 0 20 20" fill="currentColor"><path d="M8 9a3 3 0 100-6 3 3 0 000 6zM8 11a6 6 0 016 6H2a6 6 0 016-6zM16 7a1 1 0 10-2 0v1h-1a1 1 0 100 2h1v1a1 1 0 102 0v-1h1a1 1 0 100-2h-1V7z" /></svg>
-                            <span class="font-medium">Manager</span>
+                        <button disabled class="flex flex-col items-center justify-center p-4 bg-gray-900 rounded-lg border border-gray-800 opacity-50 cursor-not-allowed">
+                            <span class="text-sm font-medium text-gray-500">Manager (Soon)</span>
                         </button>
-                        <button disabled title="Coming in a future version!" class="disabled-btn flex flex-col items-center justify-center p-4 bg-gray-700 rounded-lg opacity-50 cursor-not-allowed">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10 mb-2" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M4 2a2 2 0 00-2 2v12a2 2 0 002 2h12a2 2 0 002-2V4a2 2 0 00-2-2H4zm10 10H6v2h8v-2zm0-4H6v2h8V8z" clip-rule="evenodd" /></svg>
-                            <span class="font-medium">Promoter</span>
+                        <button disabled class="flex flex-col items-center justify-center p-4 bg-gray-900 rounded-lg border border-gray-800 opacity-50 cursor-not-allowed">
+                            <span class="text-sm font-medium text-gray-500">Promoter (Soon)</span>
                         </button>
                     </div>
                 </div>
 
                 <div id="discipline-select" class="mb-6 hidden">
-                    <label class="block text-sm font-medium text-gray-300 mb-1">Choose Your Base</label>
-                    <select id="fighter-discipline" class="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
-                        <option value="muay-thai">Muay Thai (High Striking)</option>
-                        <option value="bjj">BJJ (High Grappling)</option>
-                        <option value="boxing">Boxing (Good Striking, Good Stamina)</option>
-                        <option value="mma">MMA (Well-Rounded)</option>
-                    </select>
+                    <label class="block text-sm font-semibold text-gray-300 mb-2">Combat Style</label>
+                    <div class="relative">
+                        <select id="fighter-discipline" class="w-full px-4 py-3 bg-gray-800 border border-gray-600 rounded-lg text-white appearance-none focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <option value="muay-thai">Muay Thai (Striking Specialist)</option>
+                            <option value="bjj">BJJ (Grappling Specialist)</option>
+                            <option value="boxing">Boxing (Stamina & Hands)</option>
+                            <option value="mma">MMA (Balanced)</option>
+                        </select>
+                        <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-400">
+                            <svg class="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/></svg>
+                        </div>
+                    </div>
                 </div>
 
-                <button id="start-game-btn" onclick="startGame()" class="w-full bg-blue-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-blue-500 transition-colors duration-150 disabled:opacity-50" disabled>
-                    Start Career
+                <button id="start-game-btn" onclick="startGame()" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-3.5 px-4 rounded-lg shadow-lg transform transition hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none" disabled>
+                    Begin Career
                 </button>
             </div>
         </div>
 
         <!-- Main Game Hub (Fighter) -->
-        <div id="hub-screen" class="hidden flex-grow flex-col">
-            <!-- Header -->
-            <header class="bg-gray-800 shadow-md">
+        <!-- Hidden by default, flex column to fill height -->
+        <div id="hub-screen" class="hidden h-full flex flex-col overflow-hidden">
+            
+            <!-- Sticky Header -->
+            <header class="glass-panel z-20 flex-shrink-0 border-b border-gray-700">
                 <div class="container mx-auto px-4 py-3 flex flex-wrap justify-between items-center">
-                    <h1 id="hub-player-name" class="text-xl md:text-2xl font-bold text-white"></h1>
-                    <div class="flex space-x-4 md:space-x-6 text-sm md:text-base">
-                        <span id="hub-date" class="text-gray-300">Week 1, Jan 2026</span>
-                        <span id="hub-money" class="text-green-400 font-semibold">$500</span>
-                        <span id="hub-record" class="text-gray-300">Record: 0-0-0</span>
+                    <h1 id="hub-player-name" class="text-xl md:text-2xl font-bold text-white tracking-tight">Player Name</h1>
+                    <div class="flex items-center space-x-4 md:space-x-6 text-sm font-medium">
+                        <div class="flex items-center text-gray-300">
+                            <span class="mr-2">📅</span><span id="hub-date">Week 1, 2026</span>
+                        </div>
+                        <div class="flex items-center text-green-400">
+                            <span class="mr-2">💰</span><span id="hub-money">$500</span>
+                        </div>
+                        <div class="flex items-center text-blue-300">
+                            <span class="mr-2">🏆</span><span id="hub-record">0-0-0</span>
+                        </div>
                     </div>
                 </div>
             </header>
 
-            <!-- Main Content Grid -->
-            <main class="flex-grow p-4 container mx-auto grid grid-cols-1 lg:grid-cols-3 gap-4">
-                
-                <!-- Left Column: Stats -->
-                <section class="lg:col-span-1 bg-gray-800 rounded-lg shadow-lg p-5">
-                    <h2 class="text-xl font-semibold mb-4 border-b border-gray-700 pb-2">Fighter Profile</h2>
+            <!-- Scrollable Content Area -->
+            <div class="flex-grow overflow-y-auto custom-scroll p-4">
+                <main class="container mx-auto max-w-7xl grid grid-cols-1 lg:grid-cols-12 gap-6 pb-6">
                     
-                    <!-- Health & Stamina Bars -->
-                    <div class="mb-4">
-                        <label class="block text-sm font-medium">Health</label>
-                        <div class="w-full bg-gray-700 rounded-full h-5">
-                            <div id="stat-health-bar" class="bg-red-600 h-5 rounded-full text-xs font-medium text-white text-center p-0.5 leading-none" style="width: 100%">
-                                <span id="stat-health-text">100 / 100</span>
+                    <!-- Left Column: Stats (Takes 4/12 cols on large screens) -->
+                    <section class="lg:col-span-4 glass-panel rounded-xl p-6 h-fit">
+                        <h2 class="text-lg font-bold text-white mb-4 flex items-center">
+                            <span class="w-1 h-6 bg-blue-500 rounded mr-3"></span>Fighter Stats
+                        </h2>
+                        
+                        <!-- Health Bar -->
+                        <div class="mb-4">
+                            <div class="flex justify-between text-sm mb-1">
+                                <span class="text-gray-400">Health</span>
+                                <span id="stat-health-text" class="text-white font-mono">100/100</span>
+                            </div>
+                            <div class="w-full bg-gray-700 rounded-full h-2.5">
+                                <div id="stat-health-bar" class="bg-red-500 h-2.5 rounded-full transition-all duration-500" style="width: 100%"></div>
                             </div>
                         </div>
-                    </div>
-                    <div class="mb-6">
-                        <label class="block text-sm font-medium">Stamina (Energy)</label>
-                        <div class="w-full bg-gray-700 rounded-full h-5">
-                            <div id="stat-stamina-bar" class="bg-blue-600 h-5 rounded-full text-xs font-medium text-white text-center p-0.5 leading-none" style="width: 100%">
-                                <span id="stat-stamina-text">100 / 100</span>
+
+                        <!-- Stamina Bar -->
+                        <div class="mb-6">
+                            <div class="flex justify-between text-sm mb-1">
+                                <span class="text-gray-400">Stamina</span>
+                                <span id="stat-stamina-text" class="text-white font-mono">100/100</span>
+                            </div>
+                            <div class="w-full bg-gray-700 rounded-full h-2.5">
+                                <div id="stat-stamina-bar" class="bg-blue-500 h-2.5 rounded-full transition-all duration-500" style="width: 100%"></div>
                             </div>
                         </div>
-                    </div>
 
-                    <!-- Core Stats -->
-                    <h3 class="text-lg font-semibold mb-3">Attributes</h3>
-                    <div class="space-y-2">
-                        <div class="flex justify-between items-center">
-                            <span class="text-gray-300">Striking</span>
-                            <span id="stat-striking" class="font-bold text-lg text-blue-300">10</span>
+                        <!-- Attributes Grid -->
+                        <div class="grid grid-cols-2 gap-4">
+                            <div class="bg-gray-800/50 p-3 rounded-lg text-center">
+                                <div class="text-xs text-gray-400 uppercase tracking-wider mb-1">Striking</div>
+                                <div id="stat-striking" class="text-xl font-bold text-blue-400">10</div>
+                            </div>
+                            <div class="bg-gray-800/50 p-3 rounded-lg text-center">
+                                <div class="text-xs text-gray-400 uppercase tracking-wider mb-1">Grappling</div>
+                                <div id="stat-grappling" class="text-xl font-bold text-blue-400">10</div>
+                            </div>
+                            <div class="bg-gray-800/50 p-3 rounded-lg text-center">
+                                <div class="text-xs text-gray-400 uppercase tracking-wider mb-1">Strength</div>
+                                <div id="stat-strength" class="text-xl font-bold text-blue-400">10</div>
+                            </div>
+                            <div class="bg-gray-800/50 p-3 rounded-lg text-center">
+                                <div class="text-xs text-gray-400 uppercase tracking-wider mb-1">Fame</div>
+                                <div id="stat-fame" class="text-xl font-bold text-yellow-400">0</div>
+                            </div>
                         </div>
-                        <div class="flex justify-between items-center">
-                            <span class="text-gray-300">Grappling</span>
-                            <span id="stat-grappling" class="font-bold text-lg text-blue-300">10</span>
-                        </div>
-                        <div class="flex justify-between items-center">
-                            <span class="text-gray-300">Strength</span>
-                            <span id="stat-strength" class="font-bold text-lg text-blue-300">10</span>
-                        </div>
-                        <div class="flex justify-between items-center">
-                            <span class="text-gray-300">Fame</span>
-                            <span id="stat-fame" class="font-bold text-lg text-yellow-300">0</span>
-                        </div>
-                    </div>
-                </section>
+                    </section>
 
-                <!-- Middle Column: Actions -->
-                <section class="lg:col-span-1 bg-gray-800 rounded-lg shadow-lg p-5">
-                    <h2 class="text-xl font-semibold mb-4 border-b border-gray-700 pb-2">Weekly Actions</h2>
-                    <p id="action-status" class="text-center text-yellow-400 font-medium mb-3">Choose an action for the week.</p>
-                    <div id="action-buttons" class="flex flex-col space-y-3">
-                        <button onclick="performAction('train-striking')" class="action-btn" title="Cost: $50, -20 Stamina">
-                            <span>Train Striking</span>
-                            <span class="text-xs text-gray-300">(+Skill, -Stamina, -$Money)</span>
-                        </button>
-                        <button onclick="performAction('train-grappling')" class="action-btn" title="Cost: $50, -20 Stamina">
-                            <span>Train Grappling</span>
-                            <span class="text-xs text-gray-300">(+Skill, -Stamina, -$Money)</span>
-                        </button>
-                        <button onclick="performAction('train-strength')" class="action-btn" title="Cost: $50, -20 Stamina">
-                            <span>Strength & Conditioning</span>
-                            <span class="text-xs text-gray-300">(+Skill, -Stamina, -$Money)</span>
-                        </button>
-                        <button onclick="performAction('rest')" class="action-btn" title="Free">
-                            <span>Rest & Recover</span>
-                            <span class="text-xs text-gray-300">(+Stamina, +Health)</span>
-                        </button>
-                        <button onclick="performAction('promote')" class="action-btn" title="Cost: -15 Stamina">
-                            <span>Promote Yourself ✨</span>
-                            <span class="text-xs text-gray-300">(+Fame, -Stamina)</span>
-                        </button>
-                        <button onclick="performAction('find-fight')" class="w-full text-left p-3 bg-green-600 text-white rounded-lg shadow-md hover:bg-green-500 transition-colors duration-150 font-bold">
-                            <span>Find a Fight</span>
-                            <span class="block text-xs text-green-100">(Risk vs Reward, +Fame, +$Money)</span>
-                        </button>
-                    </div>
-                    <div id="action-busy" class="hidden text-center">
-                        <p class="text-lg font-semibold text-blue-300" id="busy-message">Simulating week...</p>
-                        <button onclick="advanceWeek()" class="mt-4 w-full bg-blue-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-blue-500 transition-colors duration-150">
-                            Continue
-                        </button>
-                    </div>
-                </section>
+                    <!-- Middle Column: Actions (Takes 4/12 cols) -->
+                    <section class="lg:col-span-4 glass-panel rounded-xl p-6 h-fit">
+                        <h2 class="text-lg font-bold text-white mb-4 flex items-center">
+                            <span class="w-1 h-6 bg-yellow-500 rounded mr-3"></span>Weekly Plan
+                        </h2>
+                        <p id="action-status" class="text-sm text-gray-400 mb-4">Select an activity for the week.</p>
+                        
+                        <div id="action-buttons" class="space-y-3">
+                            <button onclick="performAction('train-striking')" class="w-full text-left px-4 py-3 bg-gray-700 hover:bg-gray-600 rounded-lg transition-colors flex justify-between items-center group">
+                                <div>
+                                    <div class="font-semibold text-white">Train Striking</div>
+                                    <div class="text-xs text-gray-400">Cost: $50, -20 Stamina</div>
+                                </div>
+                                <span class="text-gray-500 group-hover:text-white">→</span>
+                            </button>
 
-                <!-- Right Column: Event Log -->
-                <section class="lg:col-span-1 bg-gray-800 rounded-lg shadow-lg p-5 flex flex-col">
-                    <h2 class="text-xl font-semibold mb-4 border-b border-gray-700 pb-2">Career Log</h2>
-                    <div id="event-log" class="log-container flex-grow h-64 lg:h-auto overflow-y-auto pr-2 space-y-3">
-                        <!-- Log messages will be injected here -->
-                    </div>
-                </section>
-            </main>
+                            <button onclick="performAction('train-grappling')" class="w-full text-left px-4 py-3 bg-gray-700 hover:bg-gray-600 rounded-lg transition-colors flex justify-between items-center group">
+                                <div>
+                                    <div class="font-semibold text-white">Train Grappling</div>
+                                    <div class="text-xs text-gray-400">Cost: $50, -20 Stamina</div>
+                                </div>
+                                <span class="text-gray-500 group-hover:text-white">→</span>
+                            </button>
+                            
+                            <button onclick="performAction('train-strength')" class="w-full text-left px-4 py-3 bg-gray-700 hover:bg-gray-600 rounded-lg transition-colors flex justify-between items-center group">
+                                <div>
+                                    <div class="font-semibold text-white">S&C</div>
+                                    <div class="text-xs text-gray-400">Cost: $50, -20 Stamina</div>
+                                </div>
+                                <span class="text-gray-500 group-hover:text-white">→</span>
+                            </button>
+
+                            <button onclick="performAction('rest')" class="w-full text-left px-4 py-3 bg-gray-700 hover:bg-gray-600 rounded-lg transition-colors flex justify-between items-center group border-l-2 border-green-500">
+                                <div>
+                                    <div class="font-semibold text-white">Rest & Recover</div>
+                                    <div class="text-xs text-gray-400">Restore Health & Stamina</div>
+                                </div>
+                                <span class="text-gray-500 group-hover:text-white">💤</span>
+                            </button>
+
+                            <button onclick="performAction('promote')" class="w-full text-left px-4 py-3 bg-gray-700 hover:bg-gray-600 rounded-lg transition-colors flex justify-between items-center group border-l-2 border-yellow-500">
+                                <div>
+                                    <div class="font-semibold text-white">Promote Yourself ✨</div>
+                                    <div class="text-xs text-gray-400">AI Generated Hype (-15 Stamina)</div>
+                                </div>
+                                <span class="text-gray-500 group-hover:text-white">📱</span>
+                            </button>
+
+                            <button onclick="performAction('find-fight')" class="w-full text-left px-4 py-4 bg-blue-700 hover:bg-blue-600 rounded-lg transition-colors flex justify-between items-center shadow-lg mt-2">
+                                <div>
+                                    <div class="font-bold text-white text-lg">Find a Fight</div>
+                                    <div class="text-xs text-blue-200">Earn Fame & Money</div>
+                                </div>
+                                <span class="text-2xl">🥊</span>
+                            </button>
+                        </div>
+
+                        <div id="action-busy" class="hidden text-center py-8">
+                            <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
+                            <p class="text-lg font-semibold text-white mb-4" id="busy-message">Simulating...</p>
+                            <button onclick="advanceWeek()" class="bg-blue-600 hover:bg-blue-500 text-white font-bold py-2 px-6 rounded-full transition-all">
+                                Continue to Next Week
+                            </button>
+                        </div>
+                    </section>
+
+                    <!-- Right Column: Event Log (Takes 4/12 cols) -->
+                    <section class="lg:col-span-4 glass-panel rounded-xl p-6 flex flex-col h-96 lg:h-auto">
+                        <h2 class="text-lg font-bold text-white mb-4 flex items-center">
+                            <span class="w-1 h-6 bg-gray-500 rounded mr-3"></span>Career Log
+                        </h2>
+                        <div id="event-log" class="flex-grow overflow-y-auto custom-scroll space-y-3 pr-2 text-sm font-mono">
+                            <!-- Logs injected here -->
+                        </div>
+                    </section>
+                </main>
+            </div>
         </div>
-
     </div>
 
-    <!-- Modal Container -->
-    <div id="modal-backdrop" class="hidden fixed inset-0 bg-black bg-opacity-75 z-40"></div>
+    <!-- MODALS (Same Logic, Better CSS) -->
+    <div id="modal-backdrop" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm z-40 transition-opacity"></div>
     <div id="modal-container" class="hidden fixed inset-0 flex items-center justify-center z-50 p-4">
         
-        <!-- Find Fight Modal -->
-        <div id="modal-find-fight" class="modal-content hidden w-full max-w-lg bg-gray-800 rounded-lg shadow-xl p-6">
-            <h2 class="text-2xl font-bold mb-4">Fight Offer</h2>
-            <p class="mb-4">Your manager found a potential opponent. This is an amateur bout at a local gym.</p>
-            <div class="mb-6 p-4 bg-gray-700 rounded-lg">
-                <h3 id="opponent-name" class="text-xl font-semibold text-red-300"></h3>
-                <div class="flex justify-between mt-2">
-                    <span>Striking: <span id="opponent-striking" class="font-medium"></span></span>
-                    <span>Grappling: <span id="opponent-grappling" class="font-medium"></span></span>
+        <!-- Find Fight -->
+        <div id="modal-find-fight" class="modal-content hidden w-full max-w-lg rounded-2xl p-8 transform transition-all">
+            <div class="flex justify-between items-start mb-6">
+                <h2 class="text-2xl font-bold text-white">Fight Offer</h2>
+                <span class="bg-blue-600 text-xs font-bold px-2 py-1 rounded text-white">AMATEUR BOUT</span>
+            </div>
+            
+            <div class="bg-gray-800 rounded-xl p-5 mb-6 border border-gray-700">
+                <h3 id="opponent-name" class="text-xl font-bold text-red-400 mb-1">Opponent Name</h3>
+                <p class="text-sm text-gray-400 mb-4">Local Circuit Fighter</p>
+                
+                <div class="grid grid-cols-2 gap-4 mb-4">
+                    <div class="bg-gray-900 p-3 rounded text-center">
+                        <div class="text-xs text-gray-500">Striking</div>
+                        <div id="opponent-striking" class="text-lg font-bold text-white">--</div>
+                    </div>
+                    <div class="bg-gray-900 p-3 rounded text-center">
+                        <div class="text-xs text-gray-500">Grappling</div>
+                        <div id="opponent-grappling" class="text-lg font-bold text-white">--</div>
+                    </div>
                 </div>
-                <div class="mt-3 pt-3 border-t border-gray-600">
-                    <p>Purse: <span id="fight-purse-win" class="text-green-400 font-bold"></span> (Win), <span id="fight-purse-lose" class="text-yellow-400 font-bold"></span> (Lose)</p>
+                
+                <div class="flex justify-between items-center border-t border-gray-700 pt-3">
+                    <div class="text-center w-1/2 border-r border-gray-700">
+                        <div class="text-xs text-gray-500">Win Purse</div>
+                        <div id="fight-purse-win" class="text-green-400 font-bold text-lg">--</div>
+                    </div>
+                    <div class="text-center w-1/2">
+                        <div class="text-xs text-gray-500">Loss Purse</div>
+                        <div id="fight-purse-lose" class="text-yellow-500 font-bold text-lg">--</div>
+                    </div>
                 </div>
             </div>
-            <div class="flex justify-end space-x-3">
-                <button onclick="scoutOpponent()" id="scout-opponent-btn" class="px-5 py-2 bg-blue-600 rounded-md hover:bg-blue-500 transition-colors font-semibold">✨ Get Scouting Report</button>
-                <button onclick="declineFight()" class="px-5 py-2 bg-gray-600 rounded-md hover:bg-gray-500 transition-colors">Decline Fight</button>
-                <button onclick="acceptFight()" class="px-5 py-2 bg-red-600 rounded-md hover:bg-red-500 transition-colors font-semibold">Accept Fight</button>
+
+            <div class="flex flex-col gap-3">
+                <button onclick="scoutOpponent()" id="scout-opponent-btn" class="w-full py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg font-semibold transition-colors flex justify-center items-center">
+                   ✨ AI Scout Report
+                </button>
+                <div class="flex gap-3">
+                    <button onclick="declineFight()" class="flex-1 py-3 bg-gray-700 hover:bg-gray-600 text-white rounded-lg font-semibold transition-colors">Decline</button>
+                    <button onclick="acceptFight()" class="flex-1 py-3 bg-red-600 hover:bg-red-500 text-white rounded-lg font-bold transition-colors">ACCEPT FIGHT</button>
+                </div>
             </div>
         </div>
 
         <!-- Fight Sim Modal -->
-        <div id="modal-fight-sim" class="modal-content hidden w-full max-w-lg bg-gray-800 rounded-lg shadow-xl p-6">
-            <h2 class="text-2xl font-bold mb-4 text-center">FIGHT NIGHT</h2>
-            <div id="fight-sim-log" class="h-48 bg-gray-900 rounded-md p-3 overflow-y-auto mb-4 font-mono text-sm space-y-1">
-                <!-- Sim results go here -->
-            </div>
-            <h3 id="fight-result-text" class="text-2xl font-bold text-center mb-4"></h3>
-            <p id="fight-payout-text" class="text-lg text-center mb-4"></p>
-            <div class="flex justify-center">
-                <button onclick="closeModal()" class="px-8 py-2 bg-blue-600 rounded-md hover:bg-blue-500 transition-colors font-semibold">Continue Career</button>
+        <div id="modal-fight-sim" class="modal-content hidden w-full max-w-lg rounded-2xl p-1 shadow-2xl">
+            <div class="bg-black/40 p-6 rounded-xl h-full">
+                <h2 class="text-3xl font-black text-center text-white mb-2 tracking-widest">FIGHT NIGHT</h2>
+                <div class="w-16 h-1 bg-red-500 mx-auto mb-6"></div>
+                
+                <div id="fight-sim-log" class="h-60 bg-black/60 rounded-lg p-4 overflow-y-auto mb-6 font-mono text-sm space-y-2 border border-white/10 text-gray-300 shadow-inner">
+                    <!-- Sim log -->
+                </div>
+                
+                <div class="text-center mb-6">
+                    <h3 id="fight-result-text" class="text-3xl font-bold mb-2">--</h3>
+                    <p id="fight-payout-text" class="text-gray-300 text-lg">--</p>
+                </div>
+                
+                <button onclick="closeModal()" class="w-full py-3 bg-white text-black font-bold rounded-lg hover:bg-gray-200 transition-colors">
+                    Leave Ring
+                </button>
             </div>
         </div>
 
-        <!-- Random Event Modal -->
-        <div id="modal-event" class="modal-content hidden w-full max-w-md bg-gray-800 rounded-lg shadow-xl p-6">
-            <h2 id="event-title" class="text-2xl font-bold mb-4"></h2>
-            <p id="event-description" class="mb-6"></p>
-            <div class="flex justify-center">
-                <button onclick="closeModal(finishWeek)" class="px-8 py-2 bg-blue-600 rounded-md hover:bg-blue-500 transition-colors font-semibold">OK</button>
-            </div>
+        <!-- Generic Event Modal -->
+        <div id="modal-event" class="modal-content hidden w-full max-w-md rounded-2xl p-6 text-center">
+            <div class="mb-4 text-4xl">⚠️</div>
+            <h2 id="event-title" class="text-2xl font-bold text-white mb-3">Event Title</h2>
+            <p id="event-description" class="text-gray-300 mb-6">Event description goes here.</p>
+            <button onclick="closeModal(finishWeek)" class="px-8 py-2 bg-blue-600 rounded-lg text-white font-bold hover:bg-blue-500">OK</button>
         </div>
 
         <!-- Bribe Offer Modal -->
-        <div id="modal-bribe-offer" class="modal-content hidden w-full max-w-md bg-gray-800 rounded-lg shadow-xl p-6">
-            <h2 class="text-2xl font-bold mb-4 text-yellow-400">An 'Easy' Payday?</h2>
-            <p class="mb-6">Your next opponent's manager pulls you aside. "He needs this win, kid. Take a dive in the 2nd round, and there's $1000 in it for you."</p>
-            <div class="flex flex-col space-y-3">
-                <button onclick="acceptBribe()" class="w-full px-5 py-2 bg-green-600 rounded-md hover:bg-green-500 transition-colors font-semibold">Take the Bribe ($1000)</button>
-                <button onclick="refuseBribe()" class="w-full px-5 py-2 bg-gray-600 rounded-md hover:bg-gray-500 transition-colors">Refuse the Bribe</button>
+        <div id="modal-bribe-offer" class="modal-content hidden w-full max-w-md rounded-2xl p-6 border-l-4 border-yellow-500">
+            <h2 class="text-2xl font-bold text-yellow-400 mb-2">Shady Deal</h2>
+            <p class="text-gray-300 mb-6">"Take a dive in the 2nd round. $1000 cash. Easy money, kid."</p>
+            <div class="space-y-3">
+                <button onclick="acceptBribe()" class="w-full py-3 bg-green-600 hover:bg-green-500 text-white rounded-lg font-bold">Take the Money ($1000)</button>
+                <button onclick="refuseBribe()" class="w-full py-3 bg-gray-700 hover:bg-gray-600 text-white rounded-lg">Refuse (Fight Fair)</button>
             </div>
         </div>
 
         <!-- Mob Approach Modal -->
-        <div id="modal-mob-approach" class="modal-content hidden w-full max-w-md bg-gray-800 rounded-lg shadow-xl p-6">
-            <h2 class="text-2xl font-bold mb-4 text-red-500">A Shady Offer</h2>
-            <p class="mb-6">A well-dressed man approaches you after training. "We like your potential. We could... help your career. For a price." He offers to 'fix' your next match for a cut of the winnings.</p>
-            <div class="flex flex-col space-y-3">
-                <button onclick="acceptMobHelp()" class="w-full px-5 py-2 bg-red-600 rounded-md hover:bg-red-500 transition-colors font-semibold">Accept the "help"</button>
-                <button onclick="refuseMobHelp()" class="w-full px-5 py-2 bg-gray-600 rounded-md hover:bg-gray-500 transition-colors">"No thanks, I'm good"</button>
+        <div id="modal-mob-approach" class="modal-content hidden w-full max-w-md rounded-2xl p-6 border-l-4 border-red-600">
+            <h2 class="text-2xl font-bold text-red-500 mb-2">The Family</h2>
+            <p class="text-gray-300 mb-6">"We can guarantee a win today. But you'll owe us a favor..."</p>
+            <div class="space-y-3">
+                <button onclick="acceptMobHelp()" class="w-full py-3 bg-red-700 hover:bg-red-600 text-white rounded-lg font-bold">Accept "Help"</button>
+                <button onclick="refuseMobHelp()" class="w-full py-3 bg-gray-700 hover:bg-gray-600 text-white rounded-lg">Refuse</button>
             </div>
         </div>
 
-        <!-- NEW: Scouting Report Modal -->
-        <div id="modal-scout-report" class="modal-content hidden w-full max-w-md bg-gray-800 rounded-lg shadow-xl p-6">
-            <h2 class="text-2xl font-bold mb-4 text-blue-300">Coach's Report ✨</h2>
-            <div id="scout-report-content" class="mb-6 p-4 bg-gray-700 rounded-lg min-h-[100px]">
-                <!-- Loading spinner -->
-                <div id="scout-loading" class="flex justify-center items-center">
-                    <svg class="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                    </svg>
-                    <span class="ml-3">Coach is watching tape...</span>
+        <!-- Scouting Report Modal -->
+        <div id="modal-scout-report" class="modal-content hidden w-full max-w-md rounded-2xl p-6">
+            <h2 class="text-xl font-bold text-blue-400 mb-4">✨ Coach's Analysis</h2>
+            <div class="bg-gray-900/50 rounded-lg p-4 min-h-[100px] mb-4">
+                <div id="scout-loading" class="flex flex-col items-center justify-center py-4">
+                    <div class="animate-spin h-6 w-6 border-2 border-blue-500 rounded-full border-t-transparent mb-2"></div>
+                    <span class="text-xs text-gray-500">Analyzing opponent style...</span>
                 </div>
-                <!-- Report text -->
-                <p id="scout-report-text" class="hidden"></p>
-                <p id="scout-report-error" class="hidden text-red-400"></p>
+                <p id="scout-report-text" class="hidden text-sm text-gray-300 leading-relaxed italic"></p>
+                <p id="scout-report-error" class="hidden text-red-400 text-sm text-center"></p>
             </div>
-            <div class="flex justify-center">
-                <button onclick="closeModal()" class="px-8 py-2 bg-blue-600 rounded-md hover:bg-blue-500 transition-colors font-semibold">Close Report</button>
-            </div>
+            <button onclick="closeModal()" class="w-full py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg">Close</button>
         </div>
 
-        <!-- NEW: Promote Hype Modal -->
-        <div id="modal-promote-hype" class="modal-content hidden w-full max-w-md bg-gray-800 rounded-lg shadow-xl p-6">
-            <h2 class="text-2xl font-bold mb-4 text-yellow-300">Fight Hype! ✨</h2>
-            <div id="promote-hype-content" class="mb-6 p-4 bg-gray-700 rounded-lg min-h-[100px]">
-                <!-- Loading spinner -->
-                <div id="promote-loading" class="flex justify-center items-center">
-                    <svg class="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                    </svg>
-                    <span class="ml-3">Generating hype...</span>
+        <!-- Promote Hype Modal -->
+        <div id="modal-promote-hype" class="modal-content hidden w-full max-w-md rounded-2xl p-6">
+            <h2 class="text-xl font-bold text-yellow-400 mb-4">✨ Viral Marketing</h2>
+            <div class="bg-gray-900/50 rounded-lg p-4 min-h-[100px] mb-4 border border-gray-700">
+                <div id="promote-loading" class="flex flex-col items-center justify-center py-4">
+                    <div class="animate-spin h-6 w-6 border-2 border-yellow-500 rounded-full border-t-transparent mb-2"></div>
+                    <span class="text-xs text-gray-500">Generating post...</span>
                 </div>
-                <!-- Hype text -->
-                <p id="promote-hype-text" class="hidden font-mono text-lg"></p>
-                <p id="promote-hype-error" class="hidden text-red-400"></p>
+                <p id="promote-hype-text" class="hidden text-lg font-bold text-white text-center"></p>
+                <p id="promote-hype-error" class="hidden text-red-400 text-sm text-center"></p>
             </div>
-            <div class="flex justify-center">
-                <button id="post-hype-btn" onclick="closeModal(finishWeek)" class="px-8 py-2 bg-blue-600 rounded-md hover:bg-blue-500 transition-colors font-semibold hidden">Post It!</button>
-            </div>
+            <button id="post-hype-btn" onclick="closeModal(finishWeek)" class="w-full py-3 bg-blue-600 hover:bg-blue-500 text-white rounded-lg font-bold hidden">Post It!</button>
         </div>
 
-
-        <!-- Game Over Modal -->
-        <div id="modal-game-over" class="modal-content hidden w-full max-w-md bg-gray-800 rounded-lg shadow-xl p-6 text-center">
-            <h2 id="game-over-title" class="text-3xl font-bold mb-4 text-red-500"></h2>
-            <p id="game-over-description" class="text-lg mb-6"></p>
-            <div class="flex justify-center">
-                <button onclick="window.location.reload()" class="px-8 py-2 bg-blue-600 rounded-md hover:bg-blue-500 transition-colors font-semibold">Start New Career</button>
-            </div>
+        <!-- Game Over -->
+        <div id="modal-game-over" class="modal-content hidden w-full max-w-md rounded-2xl p-8 text-center border-2 border-red-600">
+            <h2 id="game-over-title" class="text-4xl font-black text-red-500 mb-4">GAME OVER</h2>
+            <p id="game-over-description" class="text-gray-300 mb-8 text-lg">Your career has ended.</p>
+            <button onclick="window.location.reload()" class="px-8 py-3 bg-white text-black font-bold rounded-lg hover:bg-gray-200">Start New Career</button>
         </div>
         
     </div>
 
     <script>
+        // --- 3D Background ---
+        let scene, camera, renderer, bgCanvas;
+        let targetCameraPos = new THREE.Vector3(0, 4, 15); 
+        let targetCameraLookAt = new THREE.Vector3(0, 1, 0); 
+        let currentLookAt = new THREE.Vector3(0, 1, 0); 
+
+        function initThree() {
+            bgCanvas = document.getElementById('bg-canvas');
+            if (!bgCanvas) return;
+
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x111827); 
+            scene.fog = new THREE.Fog(0x111827, 10, 40); 
+
+            camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
+            camera.position.set(0, 4, 15);
+            camera.lookAt(targetCameraLookAt);
+
+            renderer = new THREE.WebGLRenderer({ canvas: bgCanvas, antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2)); // Perf optimization
+
+            const ambientLight = new THREE.AmbientLight(0x404040, 3); 
+            scene.add(ambientLight);
+            
+            const spotLight = new THREE.SpotLight(0x3b82f6, 2, 50, Math.PI / 6, 0.5, 2);
+            spotLight.position.set(10, 20, 10);
+            spotLight.target.position.set(0, 0, 0);
+            scene.add(spotLight);
+            scene.add(spotLight.target);
+
+            const redSpot = new THREE.SpotLight(0xef4444, 2, 50, Math.PI / 6, 0.5, 2);
+            redSpot.position.set(-10, 20, -10);
+            redSpot.target.position.set(0, 0, 0);
+            scene.add(redSpot);
+            scene.add(redSpot.target);
+
+            // The Ring Floor
+            const floorGeo = new THREE.PlaneGeometry(20, 20);
+            const floorMat = new THREE.MeshStandardMaterial({ color: 0x1f2937, roughness: 0.4, metalness: 0.5 });
+            const floor = new THREE.Mesh(floorGeo, floorMat);
+            floor.rotation.x = -Math.PI / 2; 
+            floor.position.y = -2;
+            scene.add(floor);
+
+            // Ropes (Visual indicators)
+            const postGeo = new THREE.CylinderGeometry(0.1, 0.1, 4, 8);
+            const postMat = new THREE.MeshStandardMaterial({ color: 0x9ca3af, roughness: 0.1, metalness: 0.9 });
+            
+            const postPos = 5;
+            const posts = [
+                [postPos, -2, postPos], [-postPos, -2, postPos], 
+                [postPos, -2, -postPos], [-postPos, -2, -postPos]
+            ];
+
+            posts.forEach(p => {
+                const mesh = new THREE.Mesh(postGeo, postMat);
+                mesh.position.set(p[0], p[1] + 2, p[2]);
+                scene.add(mesh);
+            });
+
+            window.addEventListener('resize', onWindowResize, false);
+            animateThree();
+        }
+
+        function animateThree() {
+            requestAnimationFrame(animateThree);
+            camera.position.lerp(targetCameraPos, 0.03); // Slower, cinematic feel
+            currentLookAt.lerp(targetCameraLookAt, 0.03);
+            camera.lookAt(currentLookAt);
+            renderer.render(scene, camera);
+        }
+
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+
         // --- DOM Elements ---
         const creationScreen = document.getElementById('creation-screen');
         const hubScreen = document.getElementById('hub-screen');
@@ -325,15 +525,6 @@
         const modalBackdrop = document.getElementById('modal-backdrop');
         const modalContainer = document.getElementById('modal-container');
         const allModals = document.querySelectorAll('.modal-content');
-
-        const modalFindFight = document.getElementById('modal-find-fight');
-        const modalFightSim = document.getElementById('modal-fight-sim');
-        const modalEvent = document.getElementById('modal-event');
-        const modalBribeOffer = document.getElementById('modal-bribe-offer');
-        const modalMobApproach = document.getElementById('modal-mob-approach');
-        const modalGameOver = document.getElementById('modal-game-over');
-        const modalScoutReport = document.getElementById('modal-scout-report'); // NEW
-        const modalPromoteHype = document.getElementById('modal-promote-hype'); // NEW
 
         // --- Game State ---
         let gameState = {
@@ -352,37 +543,22 @@
                 strength: 10,
                 fame: 0,
             },
-            record: {
-                wins: 0,
-                losses: 0,
-                draws: 0
-            },
+            record: { wins: 0, losses: 0, draws: 0 },
             currentOpponent: null,
             isBusy: false,
             pendingAction: null,
-            isTakingDive: false, // NEW
-            isMobHelping: false, // NEW
-            isApiLoading: false, // NEW
+            isTakingDive: false,
+            isMobHelping: false,
+            isApiLoading: false,
         };
 
         // --- Gemini API ---
-
-        /**
-         * Calls the Gemini API with exponential backoff.
-         * @param {string} prompt The prompt to send to the API.
-         * @param {number} retries Number of retries left.
-         * @param {number} delay Current delay in ms.
-         * @returns {Promise<string>} The generated text.
-         */
         async function callGemini(prompt, retries = 5, delay = 1000) {
             gameState.isApiLoading = true;
-            const apiKey = ""; // Leave empty, will be handled by the environment
+            const apiKey = ""; 
             const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
 
-            const payload = {
-                contents: [{ parts: [{ text: prompt }] }],
-                // Add safety settings if needed
-            };
+            const payload = { contents: [{ parts: [{ text: prompt }] }] };
 
             try {
                 const response = await fetch(apiUrl, {
@@ -391,10 +567,7 @@
                     body: JSON.stringify(payload)
                 });
 
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
-
+                if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
                 const result = await response.json();
                 const candidate = result.candidates?.[0];
 
@@ -404,737 +577,384 @@
                 } else {
                     throw new Error("Invalid API response structure.");
                 }
-
             } catch (error) {
                 console.error("API Call Error:", error);
                 if (retries > 0) {
-                    console.log(`Retrying in ${delay}ms... (${retries} retries left)`);
                     await new Promise(res => setTimeout(res, delay));
-                    return callGemini(prompt, retries - 1, delay * 2); // Exponential backoff
+                    return callGemini(prompt, retries - 1, delay * 2); 
                 } else {
                     gameState.isApiLoading = false;
-                    throw new Error("API call failed after multiple retries.");
+                    throw new Error("API call failed.");
                 }
             }
         }
 
-
-        // --- Character Creation ---
+        // --- Logic ---
         function selectPath(path) {
-            // This function is simple now but can be expanded for other paths
             if (path === 'fighter') {
-                console.log("Fighter path selected");
+                document.querySelectorAll('.career-path-btn').forEach(b => {
+                    b.classList.remove('border-blue-500', 'bg-blue-600', 'text-white');
+                    b.classList.add('bg-gray-800', 'border-gray-700');
+                });
+                // Highlight selected
+                event.currentTarget.classList.remove('bg-gray-800', 'border-gray-700');
+                event.currentTarget.classList.add('border-blue-500', 'bg-blue-600', 'text-white');
+                
+                disciplineSelect.classList.remove('hidden');
+                startGameBtn.disabled = false;
             }
         }
 
         function startGame() {
             const playerNameInput = document.getElementById('player-name');
-            const discipline = document.getElementById('fighter-discipline').value;
-            
             if (!playerNameInput.value) {
-                alert("Please enter a name.");
+                alert("Please enter a fighter name."); // keeping simple for setup
                 return;
             }
 
             gameState.playerName = playerNameInput.value;
-            gameState.discipline = discipline;
+            gameState.discipline = document.getElementById('fighter-discipline').value;
 
-            // Set initial stats based on discipline
-            switch(discipline) {
-                case 'muay-thai':
-                    gameState.stats.striking += 5;
-                    gameState.stats.grappling -= 2;
-                    break;
-                case 'bjj':
-                    gameState.stats.striking -= 2;
-                    gameState.stats.grappling += 5;
-                    break;
-                case 'boxing':
-                    gameState.stats.striking += 3;
-                    gameState.stats.maxStamina += 10;
-                    gameState.stats.stamina += 10;
-                    break;
-                case 'mma':
-                    gameState.stats.striking += 1;
-                    gameState.stats.grappling += 1;
-                    gameState.stats.strength += 1;
-                    break;
+            // Stats Init
+            switch(gameState.discipline) {
+                case 'muay-thai': gameState.stats.striking += 5; break;
+                case 'bjj': gameState.stats.grappling += 5; break;
+                case 'boxing': gameState.stats.striking += 3; gameState.stats.stamina += 10; break;
+                case 'mma': gameState.stats.striking += 2; gameState.stats.grappling += 2; break;
             }
 
-            // Hide creation screen, show hub
+            // Switch Screens
             creationScreen.classList.add('hidden');
             hubScreen.classList.remove('hidden');
+            
+            // *** 3D Camera Move ***
+            targetCameraPos.set(0, 2, 10); // Zoom in slightly
+            targetCameraLookAt.set(0, 0, 0);
 
-            // Initial UI Update
-            document.getElementById('hub-player-name').textContent = gameState.playerName;
-            addLogMessage(`Your career as a ${discipline} fighter begins!`, 'success');
+            addLogMessage(`Welcome to the pro leagues, ${gameState.playerName}.`, 'success');
             updateUI();
         }
 
-        // --- Core Game Loop ---
-
         function performAction(action) {
             if (gameState.isBusy) return;
-
             gameState.isBusy = true;
             gameState.pendingAction = action;
 
-            actionButtons.classList.add('hidden');
-            actionBusy.classList.remove('hidden');
-            busyMessage.classList.remove('hidden');
-
-            switch(action) {
-                case 'train-striking':
-                case 'train-grappling':
-                case 'train-strength':
-                    if (gameState.stats.money < 50) {
-                        addLogMessage("Not enough money to train.", 'warning');
-                        gameState.isBusy = false;
-                        gameState.pendingAction = null;
-                        actionButtons.classList.remove('hidden');
-                        actionBusy.classList.add('hidden');
-                        return;
-                    }
-                    if (gameState.stats.stamina < 20) {
-                        addLogMessage("Not enough stamina to train.", 'warning');
-                        gameState.isBusy = false;
-                        gameState.pendingAction = null;
-                        actionButtons.classList.remove('hidden');
-                        actionBusy.classList.add('hidden');
-                        return;
-                    }
-                    busyMessage.textContent = "Training hard...";
-                    break;
-                case 'rest':
-                    if (gameState.stats.stamina >= gameState.stats.maxStamina && gameState.stats.health >= gameState.stats.maxHealth) {
-                        addLogMessage("You are already at full health and stamina.", 'info');
-                        gameState.isBusy = false;
-                        gameState.pendingAction = null;
-                        actionButtons.classList.remove('hidden');
-                        actionBusy.classList.add('hidden');
-                        return;
-                    }
-                    busyMessage.textContent = "Resting and recovering...";
-                    break;
-                case 'promote': // NEW
-                    if (gameState.stats.stamina < 15) {
-                        addLogMessage("Not enough stamina to promote yourself.", 'warning');
-                        gameState.isBusy = false;
-                        return;
-                    }
-                    busyMessage.textContent = "Generating fight hype...";
-                    generateFightHype(); // Call Gemini
-                    updateUI();
-                    return; // Don't call advanceWeek yet
-                case 'find-fight':
-                    // Check for bribe/mob flags *before* finding a new fight
-                    if (gameState.isTakingDive) {
-                        addLogMessage("You have to take a dive first! You can't back out.", 'danger');
-                        gameState.isBusy = false;
-                        gameState.pendingAction = null;
-                        actionButtons.classList.remove('hidden');
-                        actionBusy.classList.add('hidden');
-                        return;
-                    }
-                     if (gameState.isMobHelping) {
-                        addLogMessage("The mob is waiting for their 'fixed' fight. You can't fight anyone else.", 'danger');
-                        gameState.isBusy = false;
-                        gameState.pendingAction = null;
-                        actionButtons.classList.remove('hidden');
-                        actionBusy.classList.add('hidden');
-                        return;
-                    }
-
-                    busyMessage.textContent = "Manager is making calls...";
-                    // Simulate finding a fight
-                    setTimeout(() => {
-                        generateFightOffer();
-                        showModal('modal-find-fight');
-                    }, 1000); // 1 second delay
-                    return; // Don't call advanceWeek yet
+            // Cost check
+            if (action.startsWith('train') && gameState.stats.money < 50) {
+                addLogMessage("Not enough money ($50 needed).", 'danger');
+                gameState.isBusy = false; return;
+            }
+            if (action.startsWith('train') && gameState.stats.stamina < 20) {
+                addLogMessage("Too tired to train.", 'warning');
+                gameState.isBusy = false; return;
             }
 
-            // Simulate time passing for the action
-            setTimeout(advanceWeek, 1000);
+            if (action === 'find-fight') {
+                 if (gameState.isTakingDive) {
+                        addLogMessage("You owe the mob a dive. Can't find random fights.", 'danger');
+                        gameState.isBusy = false; return;
+                 }
+                 actionButtons.classList.add('hidden');
+                 actionBusy.classList.remove('hidden');
+                 setTimeout(() => {
+                     generateFightOffer();
+                     showModal('modal-find-fight');
+                     // Don't hide busy yet, waiting for modal
+                 }, 800);
+                 return; 
+            }
+            
+            if (action === 'promote') {
+                if (gameState.stats.stamina < 15) {
+                    addLogMessage("Too tired to promote.", 'warning');
+                    gameState.isBusy = false; return;
+                }
+                generateFightHype(); // Opens modal
+                return; 
+            }
+
+            // Normal training/rest
+            actionButtons.classList.add('hidden');
+            actionBusy.classList.remove('hidden');
+            setTimeout(advanceWeek, 800); // Fast simulation
         }
 
         function advanceWeek() {
-            // Hide the 'Continue' button if it was shown
-            actionBusy.classList.add('hidden');
-            busyMessage.classList.remove('hidden');
-            busyMessage.textContent = "Simulating week...";
-            
-            // This is the main function call that processes the action AND random events
-            handleRandomEvent();
-            // finishWeek() is now called by handleRandomEvent() or the modal close function
+            // If coming from button click directly
+            actionButtons.classList.add('hidden');
+            actionBusy.classList.remove('hidden');
+
+            handleRandomEvent(); // Checks for event -> Then calls finishWeek
         }
 
         function handleRandomEvent() {
-            // Check for game over conditions first
-            if (gameState.stats.money < -100 && gameState.pendingAction !== 'find-fight') {
-                gameOver("Bankrupt!", "You ran out of money and your gym kicked you out. Your career is over.");
+            if (gameState.stats.money < -200) {
+                document.getElementById('game-over-title').innerText = "BANKRUPT";
+                document.getElementById('game-over-description').innerText = "You cannot afford to live. Game Over.";
+                showModal('modal-game-over');
                 return;
             }
-
-            // Don't have random events if a fight is booked
-            if (gameState.pendingAction === 'fight') {
-                finishWeek();
-                return;
-            }
-
-            const eventChance = Math.random();
-
-            // 15% chance of a random event
-            if (eventChance < 0.15) {
-                const eventType = Math.random();
+            
+            // No random events if strictly fighting or promoting (modals handle flow)
+            if (Math.random() < 0.15) {
+                const type = Math.random();
+                showModal('modal-event');
+                const title = document.getElementById('event-title');
+                const desc = document.getElementById('event-description');
                 
-                if (eventType < 0.33) {
-                    // Simple event
-                    showModal('modal-event');
-                    document.getElementById('event-title').textContent = "Minor Injury";
-                    document.getElementById('event-description').textContent = "You tweaked your knee in training. You lose 10 Health.";
-                    gameState.stats.health = Math.max(0, gameState.stats.health - 10);
-                    addLogMessage("You suffered a minor injury in training. -10 Health.", 'warning');
-                } else if (eventType < 0.66) {
-                    // Simple event
-                    showModal('modal-event');
-                    document.getElementById('event-title').textContent = "Local Sponsor";
-                    document.getElementById('event-description').textContent = "A local noodle shop wants to sponsor you! You get an extra $100.";
-                    gameState.stats.money += 100;
-                    addLogMessage("A local sponsor gave you $100!", 'success');
+                if (type < 0.33) {
+                    title.innerText = "Minor Injury";
+                    desc.innerText = "You tweaked an ankle. -10 Health.";
+                    gameState.stats.health -= 10;
+                    addLogMessage("Injured during downtime. -10 HP.", 'warning');
+                } else if (type < 0.66) {
+                    title.innerText = "Sponsorship";
+                    desc.innerText = "Local gym sponsored you! +$150.";
+                    gameState.stats.money += 150;
+                    addLogMessage("Gained sponsorship +$150.", 'success');
                 } else {
-                    // Simple event
-                    showModal('modal-event');
-                    document.getElementById('event-title').textContent = "Overtrained";
-                    document.getElementById('event-description').textContent = "You pushed too hard. You feel drained. -10 Stamina.";
-                    gameState.stats.stamina = Math.max(0, gameState.stats.stamina - 10);
-                    addLogMessage("You overtrained and feel exhausted. -10 Stamina.", 'warning');
+                    title.innerText = "Bad Sleep";
+                    desc.innerText = "Insomnia strikes. -10 Stamina.";
+                    gameState.stats.stamina -= 10;
+                    addLogMessage("Slept poorly. -10 Stamina.", 'warning');
                 }
-                // 'finishWeek' will be called when the modal's "OK" button is clicked
             } else {
-                // No event, just finish the week
                 finishWeek();
             }
         }
 
         function finishWeek() {
-            // This function now *only* processes the action and updates stats
-            // It's called *after* any random event is handled
-            
             const action = gameState.pendingAction;
-            
-            // Process the action
+
             if (action === 'train-striking') {
-                gameState.stats.money -= 50;
-                gameState.stats.stamina -= 20;
-                let gain = Math.floor(Math.random() * 3) + 1; // 1-3 gain
-                gameState.stats.striking += gain;
-                addLogMessage(`You trained striking. Skill +${gain}, $ -50, Stamina -20.`, 'info');
+                gameState.stats.money -= 50; gameState.stats.stamina -= 20;
+                gameState.stats.striking += 1;
+                addLogMessage("Trained Striking (+1).", 'info');
+            } else if (action === 'train-grappling') {
+                gameState.stats.money -= 50; gameState.stats.stamina -= 20;
+                gameState.stats.grappling += 1;
+                addLogMessage("Trained Grappling (+1).", 'info');
+            } else if (action === 'train-strength') {
+                gameState.stats.money -= 50; gameState.stats.stamina -= 20;
+                gameState.stats.strength += 1;
+                addLogMessage("Conditioning done (+1 Str).", 'info');
+            } else if (action === 'rest') {
+                gameState.stats.stamina = Math.min(100, gameState.stats.stamina + 40);
+                gameState.stats.health = Math.min(100, gameState.stats.health + 20);
+                addLogMessage("Rested well.", 'success');
+            } else if (action === 'promote') {
+                gameState.stats.stamina -= 15;
+                gameState.stats.fame += 2;
+                addLogMessage("Promoted yourself (+2 Fame).", 'info');
             }
-            else if (action === 'train-grappling') {
-                gameState.stats.money -= 50;
-                gameState.stats.stamina -= 20;
-                let gain = Math.floor(Math.random() * 3) + 1;
-                gameState.stats.grappling += gain;
-                addLogMessage(`You trained grappling. Skill +${gain}, $ -50, Stamina -20.`, 'info');
-            }
-            else if (action === 'train-strength') {
-                gameState.stats.money -= 50;
-                gameState.stats.stamina -= 20;
-                let gain = Math.floor(Math.random() * 3) + 1;
-                gameState.stats.strength += gain;
-                addLogMessage(`You trained strength. Skill +${gain}, $ -50, Stamina -20.`, 'info');
-            }
-            else if (action === 'rest') {
-                let staminaGain = Math.floor(gameState.stats.maxStamina * 0.5); // 50% recovery
-                let healthGain = Math.floor(gameState.stats.maxHealth * 0.1); // 10% recovery
-                gameState.stats.stamina = Math.min(gameState.stats.maxStamina, gameState.stats.stamina + staminaGain);
-                gameState.stats.health = Math.min(gameState.stats.maxHealth, gameState.stats.health + healthGain);
-                addLogMessage(`You rested. Stamina +${staminaGain}, Health +${healthGain}.`, 'info');
-            }
-            else if (action === 'promote') { // NEW
-                let staminaCost = 15;
-                let fameGain = Math.floor(Math.random() * 3) + 1; // 1-3 fame
-                gameState.stats.stamina -= staminaCost;
-                gameState.stats.fame += fameGain;
-                addLogMessage(`You promoted yourself. -${staminaCost} Stamina, +${fameGain} Fame.`, 'success');
-            }
-            else if (action === 'fight') {
-                // Handled by simulateFight()
-            }
-        
-            // --- Weekly Upkeep ---
-            
-            // Passive stamina/health regen
-            if (action !== 'rest' && action !== 'fight') {
-                if (gameState.stats.stamina < gameState.stats.maxStamina) {
-                    gameState.stats.stamina = Math.min(gameState.stats.maxStamina, gameState.stats.stamina + 5);
-                }
-                if (gameState.stats.health < gameState.stats.maxHealth) {
-                    gameState.stats.health = Math.min(gameState.stats.maxHealth, gameState.stats.health + 2);
-                }
-            }
-            
-            // Pay weekly bills
-            let bills = 20;
-            gameState.stats.money -= bills;
-            addLogMessage(`Paid weekly living expenses: $${bills}.`, 'normal');
 
-            // Advance date
+            // Passive Regen
+            if (action !== 'rest') {
+                gameState.stats.stamina = Math.min(100, gameState.stats.stamina + 5);
+                gameState.stats.health = Math.min(100, gameState.stats.health + 5);
+            }
+
+            // Expenses
+            gameState.stats.money -= 20; 
             gameState.week++;
-            if (gameState.week > 52) {
-                gameState.week = 1;
-                gameState.year++;
-            }
+            if (gameState.week > 52) { gameState.week = 1; gameState.year++; }
 
-            // Reset state
+            // Reset UI
             gameState.isBusy = false;
             gameState.pendingAction = null;
             actionButtons.classList.remove('hidden');
             actionBusy.classList.add('hidden');
-
             updateUI();
-            
-            // Check for game over *after* update, so player sees final stats
-            if (gameState.stats.health <= 0) {
-                gameOver("Career-Ending Injury", "Your body is broken. You can no longer compete. Your career is over.");
-            }
         }
 
-        // --- NEW Gemini Features ---
-
-        async function scoutOpponent() {
-            if (gameState.isApiLoading || !gameState.currentOpponent) return;
+        // --- Fight Logic ---
+        function generateFightOffer() {
+            const level = gameState.record.wins + 1;
+            const opp = {
+                name: "Opponent #" + Math.floor(Math.random() * 1000),
+                striking: 5 + Math.floor(Math.random() * level * 2),
+                grappling: 5 + Math.floor(Math.random() * level * 2),
+                purseWin: 200 + (level * 50),
+                purseLose: 50
+            };
+            gameState.currentOpponent = opp;
             
-            const player = gameState.stats;
-            const opp = gameState.currentOpponent;
-            const scoutBtn = document.getElementById('scout-opponent-btn');
-            scoutBtn.disabled = true;
+            document.getElementById('opponent-name').innerText = opp.name;
+            document.getElementById('opponent-striking').innerText = opp.striking;
+            document.getElementById('opponent-grappling').innerText = opp.grappling;
+            document.getElementById('fight-purse-win').innerText = "$" + opp.purseWin;
+            document.getElementById('fight-purse-lose').innerText = "$" + opp.purseLose;
+        }
 
-            // Show modal with loading state
+        function declineFight() {
+            addLogMessage("Declined fight.", 'normal');
+            closeModal();
+            // Reset UI manually since finishWeek isn't called
+            gameState.isBusy = false;
+            actionButtons.classList.remove('hidden');
+            actionBusy.classList.add('hidden');
+        }
+
+        function acceptFight() {
+            // Check for events
+            if (Math.random() < 0.2) { showModal('modal-bribe-offer'); return; }
+            if (Math.random() < 0.2) { showModal('modal-mob-approach'); return; }
+            
+            closeModal(() => runFightSim());
+        }
+
+        // Event Choices
+        function acceptBribe() { 
+            gameState.isTakingDive = true; 
+            gameState.stats.money += 1000;
+            addLogMessage("Bribe accepted ($1000). You must lose.", 'warning');
+            closeModal(() => runFightSim(true)); 
+        }
+        function refuseBribe() { closeModal(() => runFightSim()); }
+        function acceptMobHelp() {
+            gameState.isMobHelping = true;
+            addLogMessage("Mob help accepted.", 'warning');
+            closeModal(() => runFightSim(false, true));
+        }
+        function refuseMobHelp() { closeModal(() => runFightSim()); }
+
+        function runFightSim(forceLoss = false, forceWin = false) {
+            showModal('modal-fight-sim');
+            const log = document.getElementById('fight-sim-log');
+            const result = document.getElementById('fight-result-text');
+            const payout = document.getElementById('fight-payout-text');
+            log.innerHTML = "";
+            
+            const p = gameState.stats;
+            const o = gameState.currentOpponent;
+            
+            let pScore = p.striking + p.grappling + p.strength + (Math.random() * 10);
+            let oScore = o.striking + o.grappling + (Math.random() * 10);
+
+            log.innerHTML += `<p>Your Strength: ${Math.floor(pScore)} vs Opponent: ${Math.floor(oScore)}</p>`;
+
+            let won = pScore > oScore;
+            if (forceLoss) won = false;
+            if (forceWin) won = true;
+
+            if (won) {
+                result.innerText = "VICTORY";
+                result.className = "text-3xl font-bold text-green-500 mb-2";
+                payout.innerText = `Payout: $${o.purseWin}`;
+                gameState.stats.money += o.purseWin;
+                gameState.record.wins++;
+                gameState.stats.fame += 5;
+                addLogMessage(`Won against ${o.name}`, 'success');
+                
+                // 3D Camera Effect on Win
+                 targetCameraPos.set(10, 10, 10); // Dramatic angle
+            } else {
+                result.innerText = "DEFEAT";
+                result.className = "text-3xl font-bold text-red-500 mb-2";
+                payout.innerText = `Payout: $${o.purseLose}`;
+                gameState.stats.money += o.purseLose;
+                gameState.record.losses++;
+                addLogMessage(`Lost to ${o.name}`, 'danger');
+                
+                // 3D Camera Effect on Loss
+                targetCameraPos.set(0, 1, 5); // Low angle (knocked down)
+            }
+            
+            // Reset Camera after a bit
+            setTimeout(() => {
+                 targetCameraPos.set(0, 2, 10);
+            }, 3000);
+
+            gameState.stats.health -= 15;
+            finishWeek();
+        }
+
+        // --- Gemini Integrations ---
+        async function scoutOpponent() {
+            const btn = document.getElementById('scout-opponent-btn');
+            btn.disabled = true; btn.innerText = "Scouting...";
             showModal('modal-scout-report');
             document.getElementById('scout-loading').classList.remove('hidden');
             document.getElementById('scout-report-text').classList.add('hidden');
-            document.getElementById('scout-report-error').classList.add('hidden');
-
-            const prompt = `Act as a grizzled, old-school fight coach. My fighter, ${gameState.playerName}, is about to fight ${opp.name}.
-My fighter's stats: Striking ${player.striking}, Grappling ${player.grappling}.
-Opponent's stats: Striking ${opp.striking}, Grappling ${opp.grappling}.
-Give me a short, punchy, 1-2 sentence breakdown of the opponent and a tactical game plan. Be direct and use colorful language, like a coach in a movie.`;
 
             try {
-                const report = await callGemini(prompt);
-                document.getElementById('scout-report-text').innerText = `"${report}"`;
+                const text = await callGemini(`Roleplay as a fight coach. Give a 1 sentence analysis of an opponent with Striking ${gameState.currentOpponent.striking} and Grappling ${gameState.currentOpponent.grappling} vs my fighter who has Striking ${gameState.stats.striking}.`);
+                document.getElementById('scout-report-text').innerText = `"${text}"`;
                 document.getElementById('scout-report-text').classList.remove('hidden');
-            } catch (error) {
-                console.error("Scouting Error:", error);
-                document.getElementById('scout-report-error').innerText = "Coach is busy... try again later.";
+            } catch(e) {
+                document.getElementById('scout-report-error').innerText = "Coach unavailable.";
                 document.getElementById('scout-report-error').classList.remove('hidden');
             } finally {
                 document.getElementById('scout-loading').classList.add('hidden');
-                scoutBtn.disabled = false;
+                btn.disabled = false; btn.innerText = "✨ AI Scout Report";
             }
         }
 
         async function generateFightHype() {
-            if (gameState.isApiLoading) return;
-
-            // Show modal with loading state
             showModal('modal-promote-hype');
             document.getElementById('promote-loading').classList.remove('hidden');
             document.getElementById('promote-hype-text').classList.add('hidden');
-            document.getElementById('promote-hype-error').classList.add('hidden');
             document.getElementById('post-hype-btn').classList.add('hidden');
 
-            const player = gameState.stats;
-            const strongestStat = player.striking > player.grappling ? 'devastating striking' : 'slick grappling';
-
-            const prompt = `Act as a modern, energetic fight promoter on social media.
-Generate a short, exciting social media post (1-2 sentences, max 140 chars) for an up-and-coming ${gameState.discipline} fighter named ${gameState.playerName}.
-Their record is ${gameState.record.wins}-${gameState.record.losses}. They are known for their ${strongestStat}.
-Use hashtags and emojis. Make it punchy!`;
-
             try {
-                const hype = await callGemini(prompt);
-                document.getElementById('promote-hype-text').innerText = hype;
+                const text = await callGemini(`Write a 1-sentence viral tweet for a fighter named ${gameState.playerName} (Record: ${gameState.record.wins}-${gameState.record.losses}). Use emojis.`);
+                document.getElementById('promote-hype-text').innerText = text;
                 document.getElementById('promote-hype-text').classList.remove('hidden');
                 document.getElementById('post-hype-btn').classList.remove('hidden');
-            } catch (error) {
-                console.error("Hype Error:", error);
-                document.getElementById('promote-hype-error').innerText = "Couldn't connect to social media... try again later.";
-                document.getElementById('promote-hype-error').classList.remove('hidden');
-                // If it fails, just give a default "Post It!" button to continue the week
-                document.getElementById('post-hype-btn').classList.remove('hidden');
+            } catch(e) {
+                closeModal();
+                addLogMessage("Failed to generate hype.", 'danger');
+                gameState.isBusy = false;
             } finally {
                 document.getElementById('promote-loading').classList.add('hidden');
             }
         }
 
-
-        // --- Shady Event Handlers ---
-
-        function offerBribe() {
-            // This is called just before a fight
-            if (Math.random() < 0.25) { // 25% chance of bribe offer
-                showModal('modal-bribe-offer');
-                // The fight sim is paused until a choice is made
-                return true; // Bribe was offered
-            }
-            return false; // No bribe
+        // --- Utils ---
+        function addLogMessage(msg, type) {
+            const d = document.createElement('div');
+            let color = "text-gray-300";
+            if (type === 'success') color = "text-green-400";
+            if (type === 'warning') color = "text-yellow-400";
+            if (type === 'danger') color = "text-red-400";
+            d.className = `${color} border-b border-white/10 pb-1`;
+            d.innerHTML = `<span class="opacity-50 mr-2">[W${gameState.week}]</span> ${msg}`;
+            document.getElementById('event-log').prepend(d);
         }
-
-        function acceptBribe() {
-            addLogMessage("You agreed to take a dive. Don't mess this up...", 'warning');
-            gameState.isTakingDive = true;
-            gameState.stats.money += 1000; // Get paid upfront
-            addLogMessage("You were paid $1000. Now you have to lose.", 'success');
-            closeModal(() => simulateFight(true)); // Pass 'true' to force loss
-        }
-
-        function refuseBribe() {
-            addLogMessage("You refused the bribe. Good for you.", 'info');
-            closeModal(() => simulateFight(false)); // Fight normally
-        }
-
-        function offerMobHelp() {
-            // This is called just before a fight
-             if (Math.random() < 0.25) { // 25% chance of mob offer
-                showModal('modal-mob-approach');
-                // The fight sim is paused until a choice is made
-                return true; // Mob offer
-            }
-            return false; // No offer
-        }
-        
-        function acceptMobHelp() {
-            addLogMessage("You accepted the mob's 'help'. This is a dangerous game...", 'danger');
-            gameState.isMobHelping = true;
-            closeModal(() => simulateFight(false, true)); // Pass 'true' to force win
-        }
-
-        function refuseMobHelp() {
-            addLogMessage("You refused the mob. They don't look happy...", 'warning');
-            // Add a chance of them "punishing" you
-            if (Math.random() < 0.3) {
-                addLogMessage("The mob paid off the ref! You'll be at a disadvantage.", 'danger');
-                // Simulate disadvantage (e.g., lower your stats for this fight)
-                gameState.currentOpponent.striking += 5; // Make opponent stronger
-            }
-            closeModal(() => simulateFight(false, false)); // Fight normally
-        }
-
-
-        // --- Fight Sim ---
-
-        function generateFightOffer() {
-            // Generate a slightly tougher opponent each time
-            const baseStat = 8;
-            const scaling = gameState.record.wins * 2;
-            
-            const name = "Rival Fighter"; // Simple name for now
-            const striking = baseStat + scaling + Math.floor(Math.random() * 5); // 0-4
-            const grappling = baseStat + scaling + Math.floor(Math.random() * 5); // 0-4
-            
-            const purseWin = 200 + (gameState.stats.fame * 10);
-            const purseLose = 50 + (gameState.stats.fame * 5);
-
-            gameState.currentOpponent = { name, striking, grappling, purseWin, purseLose };
-
-            // Update modal
-            document.getElementById('opponent-name').textContent = name;
-            document.getElementById('opponent-striking').textContent = striking;
-            document.getElementById('opponent-grappling').textContent = grappling;
-            document.getElementById('fight-purse-win').textContent = `$${purseWin}`;
-            document.getElementById('fight-purse-lose').textContent = `$${purseLose}`;
-        }
-
-        function acceptFight() {
-            addLogMessage(`Fight accepted against ${gameState.currentOpponent.name}!`, 'info');
-            gameState.pendingAction = 'fight'; // Lock in the action
-            
-            // Reset scouting report button
-            const scoutBtn = document.getElementById('scout-opponent-btn');
-            scoutBtn.disabled = false;
-            document.getElementById('scout-report-text').classList.add('hidden');
-            document.getElementById('scout-report-error').classList.add('hidden');
-
-            // Check for shady events *before* closing the modal
-            if (offerBribe()) {
-                // Modal is now open, wait for player choice
-                return;
-            }
-            if (offerMobHelp()) {
-                // Modal is now open, wait for player choice
-                return;
-            }
-
-            // No shady events, proceed to simulation
-            closeModal(() => simulateFight(false, false));
-        }
-
-        function declineFight() {
-            addLogMessage("You declined the fight.", 'normal');
-            gameState.isBusy = false;
-            gameState.pendingAction = null;
-            gameState.currentOpponent = null;
-            actionButtons.classList.remove('hidden');
-            actionBusy.classList.add('hidden');
-            
-            // Reset scouting report button
-            const scoutBtn = document.getElementById('scout-opponent-btn');
-            scoutBtn.disabled = false;
-            document.getElementById('scout-report-text').classList.add('hidden');
-            document.getElementById('scout-report-error').classList.add('hidden');
-            
-            closeModal();
-        }
-
-        function simulateFight(forceLoss = false, forceWin = false) {
-            showModal('modal-fight-sim');
-            
-            const simLog = document.getElementById('fight-sim-log');
-            const resultText = document.getElementById('fight-result-text');
-            const payoutText = document.getElementById('fight-payout-text');
-            simLog.innerHTML = ""; // Clear log
-            resultText.textContent = "";
-            payoutText.textContent = "";
-
-            const player = gameState.stats;
-            const opp = gameState.currentOpponent;
-
-            let playerHealth = 100;
-            let oppHealth = 100;
-            let rounds = 3;
-
-            function logRound(msg) {
-                const p = document.createElement('p');
-                p.textContent = msg;
-                simLog.appendChild(p);
-                simLog.scrollTop = simLog.scrollHeight; // Auto-scroll
-            }
-
-            logRound(`--- Fight vs. ${opp.name} begins! ---`);
-
-            for (let r = 1; r <= rounds; r++) {
-                if (playerHealth <= 0 || oppHealth <= 0) break;
-
-                logRound(`--- Round ${r} ---`);
-
-                // Striking Exchange
-                let playerStrike = (player.striking + player.strength) * (Math.random() + 0.5);
-                let oppStrike = (opp.striking + (opp.grappling / 2)) * (Math.random() + 0.5); // Use opp's stats
-
-                if (playerStrike > oppStrike) {
-                    let dmg = Math.floor(playerStrike - oppStrike);
-                    oppHealth -= dmg;
-                    logRound(`${gameState.playerName} lands a clean shot! (-${dmg} HP)`);
-                } else {
-                    let dmg = Math.floor(oppStrike - playerStrike);
-                    playerHealth -= dmg;
-                    logRound(`${opp.name} counters! (-${dmg} HP)`);
-                }
-
-                if (playerHealth <= 0 || oppHealth <= 0) break;
-
-                // Grappling Exchange
-                let playerGrapple = (player.grappling + player.strength) * (Math.random() + 0.5);
-                let oppGrapple = (opp.grappling + (opp.striking / 2)) * (Math.random() + 0.5); // Use opp's stats
-
-                if (playerGrapple > oppGrapple) {
-                    let dmg = Math.floor(playerGrapple - oppGrapple);
-                    oppHealth -= dmg;
-                    logRound(`${gameState.playerName} controls the clinch! (-${dmg} HP)`);
-                } else {
-                    let dmg = Math.floor(oppGrapple - playerGrapple);
-                    playerHealth -= dmg;
-                    logRound(`${opp.name} gets a takedown! (-${dmg} HP)`);
-                }
-            }
-
-            // --- Determine Winner ---
-            let win = false;
-            
-            // Check for forced outcomes
-            if (forceLoss) {
-                win = false;
-                resultText.textContent = "You lost! (Took a Dive)";
-                resultText.classList.add('text-yellow-400');
-                resultText.classList.remove('text-green-400', 'text-red-400');
-
-                // Check for getting caught
-                if (Math.random() < 0.25) { // 25% chance of getting caught
-                    let fameLoss = 50;
-                    gameState.stats.fame = Math.max(0, gameState.stats.fame - fameLoss);
-                    addLogMessage("You were caught taking a dive! Your reputation is ruined.", 'danger');
-                    addLogMessage(`You lose ${fameLoss} fame!`, 'danger');
-                }
-
-            } else if (forceWin) {
-                win = true;
-                resultText.textContent = "YOU WON! (Mob Help)";
-                resultText.classList.add('text-green-400');
-                resultText.classList.remove('text-yellow-400', 'text-red-400');
-            }
-            // Normal outcome
-            else if (playerHealth > oppHealth) {
-                win = true;
-                resultText.textContent = "YOU WON!";
-                resultText.classList.add('text-green-400');
-                resultText.classList.remove('text-yellow-400', 'text-red-400');
-            } else {
-                win = false;
-                resultText.textContent = "You lost.";
-                resultText.classList.add('text-red-400');
-                resultText.classList.remove('text-green-400', 'text-yellow-400');
-            }
-
-
-            // --- Payouts & Stats ---
-            let payout = 0;
-            let healthLoss = 100 - playerHealth;
-            healthLoss = Math.max(10, healthLoss); // Minimum 10 health loss
-
-            if (win) {
-                payout = opp.purseWin;
-                gameState.record.wins++;
-                gameState.stats.fame += 5;
-                addLogMessage(`You won against ${opp.name}! +$${payout}, +5 Fame, -${healthLoss} Health.`, 'success');
-
-                if (forceWin) {
-                    let mobCut = Math.floor(payout * 0.5); // Mob takes 50%
-                    payout -= mobCut;
-                    addLogMessage(`The mob takes their cut... -$${mobCut}`, 'danger');
-                }
-
-            } else {
-                payout = opp.purseLose;
-                gameState.record.losses++;
-                gameState.stats.fame += 1;
-                addLogMessage(`You lost to ${opp.name}. +$${payout}, +1 Fame, -${healthLoss} Health.`, 'warning');
-            }
-
-            gameState.stats.money += payout;
-            gameState.stats.health -= healthLoss;
-            payoutText.textContent = `Payout: $${payout}, Health Lost: ${healthLoss}`;
-
-            // Reset flags
-            gameState.currentOpponent = null;
-            gameState.isTakingDive = false;
-            gameState.isMobHelping = false;
-            
-            // Finish the week (this also updates UI and resets busy state)
-            finishWeek();
-        }
-
-
-        // --- UI & Modals ---
 
         function updateUI() {
-            // Stats Panel
-            document.getElementById('hub-date').textContent = `Week ${gameState.week}, ${gameState.year}`;
-            document.getElementById('hub-money').textContent = `$${gameState.stats.money}`;
-            document.getElementById('hub-record').textContent = `Record: ${gameState.record.wins}-${gameState.record.losses}-${gameState.record.draws}`;
-
-            document.getElementById('stat-health-text').textContent = `${gameState.stats.health} / ${gameState.stats.maxHealth}`;
-            document.getElementById('stat-health-bar').style.width = `${(gameState.stats.health / gameState.stats.maxHealth) * 100}%`;
+            document.getElementById('hub-player-name').innerText = gameState.playerName;
+            document.getElementById('hub-date').innerText = `Week ${gameState.week}, ${gameState.year}`;
+            document.getElementById('hub-money').innerText = `$${gameState.stats.money}`;
+            document.getElementById('hub-record').innerText = `${gameState.record.wins}-${gameState.record.losses}-${gameState.record.draws}`;
             
-            document.getElementById('stat-stamina-text').textContent = `${gameState.stats.stamina} / ${gameState.stats.maxStamina}`;
-            document.getElementById('stat-stamina-bar').style.width = `${(gameState.stats.stamina / gameState.stats.maxStamina) * 100}%`;
-
-            document.getElementById('stat-striking').textContent = gameState.stats.striking;
-            document.getElementById('stat-grappling').textContent = gameState.stats.grappling;
-            document.getElementById('stat-strength').textContent = gameState.stats.strength;
-            document.getElementById('stat-fame').textContent = gameState.stats.fame;
-
-            // Update money color
-            const moneyEl = document.getElementById('hub-money');
-            if (gameState.stats.money < 0) {
-                moneyEl.classList.add('text-red-500');
-                moneyEl.classList.remove('text-green-400');
-            } else {
-                moneyEl.classList.remove('text-red-500');
-                moneyEl.classList.add('text-green-400');
-            }
-        }
-        
-        function gameOver(title, description) {
-            document.getElementById('game-over-title').textContent = title;
-            document.getElementById('game-over-description').textContent = description;
-            showModal('modal-game-over');
+            document.getElementById('stat-health-text').innerText = `${gameState.stats.health}/100`;
+            document.getElementById('stat-health-bar').style.width = `${gameState.stats.health}%`;
+            
+            document.getElementById('stat-stamina-text').innerText = `${gameState.stats.stamina}/100`;
+            document.getElementById('stat-stamina-bar').style.width = `${gameState.stats.stamina}%`;
+            
+            document.getElementById('stat-striking').innerText = gameState.stats.striking;
+            document.getElementById('stat-grappling').innerText = gameState.stats.grappling;
+            document.getElementById('stat-strength').innerText = gameState.stats.strength;
+            document.getElementById('stat-fame').innerText = gameState.stats.fame;
         }
 
-        function showModal(modalId) {
-            modalBackdrop.classList.remove('hidden');
-            modalContainer.classList.remove('hidden');
-            
-            allModals.forEach(modal => modal.classList.add('hidden'));
-            
-            const activeModal = document.getElementById(modalId);
-            if (activeModal) {
-                activeModal.classList.remove('hidden');
-            } else {
-                console.error(`Modal with ID ${modalId} not found.`);
-            }
+        function showModal(id) {
+            document.getElementById('modal-backdrop').classList.remove('hidden');
+            document.getElementById('modal-container').classList.remove('hidden');
+            document.querySelectorAll('.modal-content').forEach(el => el.classList.add('hidden'));
+            document.getElementById(id).classList.remove('hidden');
         }
 
-        function closeModal(callback = null) {
-            modalBackdrop.classList.add('hidden');
-            modalContainer.classList.add('hidden');
-            allModals.forEach(modal => modal.classList.add('hidden'));
-
-            // Reset state if closing fight modal
-            if (!gameState.pendingAction) { // Only reset if not in middle of action
-                 gameState.isBusy = false;
-            }
-           
-            // This logic was moved to declineFight() to prevent bug
-            // if (gameState.currentOpponent) {
-            //    gameState.currentOpponent = null;
-            // }
-
-            // Execute callback if one exists (e.g., finishWeek)
-            if (callback && typeof callback === 'function') {
-                callback();
-            }
+        function closeModal(cb) {
+            document.getElementById('modal-backdrop').classList.add('hidden');
+            document.getElementById('modal-container').classList.add('hidden');
+            if (cb) cb();
         }
 
-        // --- Utility Functions ---
-        function addLogMessage(message, type = 'normal') {
-            const logEntry = document.createElement('div');
-            logEntry.innerHTML = `<span class="font-bold text-gray-400">[Week ${gameState.week}]</span> ${message}`;
-            
-            switch(type) {
-                case 'success':
-                    logEntry.classList.add('text-green-400');
-                    break;
-                case 'warning':
-                    logEntry.classList.add('text-yellow-400');
-                    break;
-                case 'danger':
-                    logEntry.classList.add('text-red-400');
-                    break;
-                case 'info':
-                    logEntry.classList.add('text-blue-300');
-                    break;
-                default:
-                    logEntry.classList.add('text-gray-200');
-open
-            }
-            
-            // Add to top of log
-            eventLog.prepend(logEntry);
-        }
-
-        // --- Init ---
-        // Add event listener to career path buttons
-        document.querySelectorAll('.career-path-btn').forEach(btn => {
-            btn.addEventListener('click', () => {
-                document.querySelectorAll('.career-path-btn').forEach(b => b.classList.remove('bg-blue-600', 'text-white'));
-                btn.classList.add('bg-blue-600', 'text-white');
-                disciplineSelect.classList.remove('hidden');
-                startGameBtn.disabled = false;
-            });
-        });
+        window.onload = initThree;
 
     </script>
 </body>

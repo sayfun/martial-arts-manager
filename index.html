@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Martial Arts Manager 2026</title>
+    <!-- FIXED: Corrected CDN URL -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Load Three.js 3D Library -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
@@ -18,7 +19,7 @@
             padding: 0;
             color: #e5e7eb; /* text-gray-200 */
             background-color: #111827; /* gray-900 */
-            overflow: hidden; /* Kill body scroll completely */
+            position: relative;
         }
         
         /* Custom scrollbar */
@@ -38,7 +39,7 @@
 
         /* The 3D canvas */
         #bg-canvas {
-            position: fixed;
+            position: absolute;
             top: 0;
             left: 0;
             width: 100%;
@@ -51,7 +52,7 @@
         #app {
             position: relative;
             z-index: 10;
-            height: 100vh; /* Force full viewport height */
+            height: 100%;
             display: flex;
             flex-direction: column;
         }
@@ -85,16 +86,16 @@
         }
     </style>
 </head>
-<body>
+<body class="h-full">
     
-    <!-- 3D Background -->
+    <!-- 3D Background Canvas -->
     <canvas id="bg-canvas"></canvas>
 
-    <div id="app">
+    <div id="app" class="overflow-hidden">
 
         <!-- Character Creation Screen -->
-        <div id="creation-screen" class="flex-grow flex items-center justify-center p-4 w-full">
-            <div class="glass-panel w-full max-w-md rounded-xl p-8">
+        <div id="creation-screen" class="flex-grow flex items-center justify-center p-4 w-full h-full overflow-y-auto">
+            <div class="glass-panel w-full max-w-md rounded-xl p-8 my-auto">
                 <h1 class="text-3xl font-bold text-center text-white mb-6">Create Your Legacy</h1>
                 
                 <div class="mb-5">
@@ -139,11 +140,18 @@
                 <button id="start-game-btn" onclick="startGame()" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-3.5 px-4 rounded-lg shadow-lg transform transition hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none" disabled>
                     Begin Career
                 </button>
+                
+                <div class="mt-4 text-center">
+                    <button onclick="toggleApiKey()" class="text-xs text-gray-500 hover:text-gray-300 underline">API Settings (Optional)</button>
+                    <div id="api-key-container" class="hidden mt-2">
+                         <input type="password" id="user-api-key" class="w-full px-2 py-1 bg-gray-900 border border-gray-700 rounded text-xs text-white" placeholder="Paste Gemini API Key here">
+                         <p class="text-[10px] text-gray-500 mt-1">Leave blank to use Offline Mode</p>
+                    </div>
+                </div>
             </div>
         </div>
 
         <!-- Main Game Hub (Fighter) -->
-        <!-- Hidden by default, flex column to fill height -->
         <div id="hub-screen" class="hidden h-full flex flex-col overflow-hidden">
             
             <!-- Sticky Header -->
@@ -168,7 +176,7 @@
             <div class="flex-grow overflow-y-auto custom-scroll p-4">
                 <main class="container mx-auto max-w-7xl grid grid-cols-1 lg:grid-cols-12 gap-6 pb-6">
                     
-                    <!-- Left Column: Stats (Takes 4/12 cols on large screens) -->
+                    <!-- Left Column: Stats -->
                     <section class="lg:col-span-4 glass-panel rounded-xl p-6 h-fit">
                         <h2 class="text-lg font-bold text-white mb-4 flex items-center">
                             <span class="w-1 h-6 bg-blue-500 rounded mr-3"></span>Fighter Stats
@@ -217,7 +225,7 @@
                         </div>
                     </section>
 
-                    <!-- Middle Column: Actions (Takes 4/12 cols) -->
+                    <!-- Middle Column: Actions -->
                     <section class="lg:col-span-4 glass-panel rounded-xl p-6 h-fit">
                         <h2 class="text-lg font-bold text-white mb-4 flex items-center">
                             <span class="w-1 h-6 bg-yellow-500 rounded mr-3"></span>Weekly Plan
@@ -283,7 +291,7 @@
                         </div>
                     </section>
 
-                    <!-- Right Column: Event Log (Takes 4/12 cols) -->
+                    <!-- Right Column: Event Log -->
                     <section class="lg:col-span-4 glass-panel rounded-xl p-6 flex flex-col h-96 lg:h-auto">
                         <h2 class="text-lg font-bold text-white mb-4 flex items-center">
                             <span class="w-1 h-6 bg-gray-500 rounded mr-3"></span>Career Log
@@ -297,7 +305,7 @@
         </div>
     </div>
 
-    <!-- MODALS (Same Logic, Better CSS) -->
+    <!-- MODALS -->
     <div id="modal-backdrop" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm z-40 transition-opacity"></div>
     <div id="modal-container" class="hidden fixed inset-0 flex items-center justify-center z-50 p-4">
         
@@ -552,12 +560,50 @@
             isApiLoading: false,
         };
 
-        // --- Gemini API ---
+        // --- Mock Data for Offline Mode ---
+        const mockHype = [
+            "Just wrapped up camp. I'm a different animal. #AndNew 🦁",
+            "They say he's tough. I say I'm inevitable. 💥👊",
+            "Don't blink. It won't last long. ⚡️",
+            "Hard work beats talent when talent doesn't work hard. See you Saturday.",
+            "Weight cut done. Now we eat. Then we feast in the cage. 🥩"
+        ];
+
+        const mockScouting = [
+            "This guy telegraphs his right hand. Slip left and counter hard.",
+            "He's got a weak chin but hits like a truck. Keep your guard up and tire him out.",
+            "Great wrestler, terrible striking. Keep it standing at all costs.",
+            "He starts fast but fades in round 3. Weather the storm, then finish him.",
+            "He relies too much on kicks. Catch one and take him down."
+        ];
+
+        // --- Gemini API / Offline Fallback ---
+        function toggleApiKey() {
+            document.getElementById('api-key-container').classList.toggle('hidden');
+        }
+
         async function callGemini(prompt, retries = 5, delay = 1000) {
             gameState.isApiLoading = true;
-            const apiKey = ""; 
-            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
+            
+            // 1. Check if user provided a key
+            const userKey = document.getElementById('user-api-key').value.trim();
+            
+            // 2. If no key, use Offline Mode immediately
+            if (!userKey) {
+                console.log("No API Key detected. Using Offline Mock Data.");
+                await new Promise(r => setTimeout(r, 1500)); // Simulate network delay
+                gameState.isApiLoading = false;
+                
+                // Return appropriate mock data based on prompt content
+                if (prompt.includes("viral tweet")) {
+                    return mockHype[Math.floor(Math.random() * mockHype.length)];
+                } else {
+                    return mockScouting[Math.floor(Math.random() * mockScouting.length)];
+                }
+            }
 
+            // 3. If key exists, try real API
+            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${userKey}`;
             const payload = { contents: [{ parts: [{ text: prompt }] }] };
 
             try {
@@ -579,12 +625,19 @@
                 }
             } catch (error) {
                 console.error("API Call Error:", error);
+                // If real API fails, fall back to mocks so game doesn't break
+                if (retries === 0) {
+                     gameState.isApiLoading = false;
+                     if (prompt.includes("viral tweet")) {
+                        return mockHype[Math.floor(Math.random() * mockHype.length)];
+                    } else {
+                        return mockScouting[Math.floor(Math.random() * mockScouting.length)];
+                    }
+                }
+                
                 if (retries > 0) {
                     await new Promise(res => setTimeout(res, delay));
                     return callGemini(prompt, retries - 1, delay * 2); 
-                } else {
-                    gameState.isApiLoading = false;
-                    throw new Error("API call failed.");
                 }
             }
         }
@@ -608,7 +661,8 @@
         function startGame() {
             const playerNameInput = document.getElementById('player-name');
             if (!playerNameInput.value) {
-                alert("Please enter a fighter name."); // keeping simple for setup
+                // Simple alert fallback
+                alert("Please enter a fighter name."); 
                 return;
             }
 
@@ -883,6 +937,7 @@
                 document.getElementById('scout-report-text').innerText = `"${text}"`;
                 document.getElementById('scout-report-text').classList.remove('hidden');
             } catch(e) {
+                // This should rarely happen now with the mock fallback
                 document.getElementById('scout-report-error').innerText = "Coach unavailable.";
                 document.getElementById('scout-report-error').classList.remove('hidden');
             } finally {

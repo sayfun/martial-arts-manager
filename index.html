@@ -56,12 +56,10 @@
             box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5);
         }
 
-        /* Match UI Specifics */
         .health-bar-fill { transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
         .hit-flash { animation: flash 0.1s ease-out; }
         @keyframes flash { 0% { opacity: 0; } 50% { opacity: 1; background-color: rgba(255, 255, 255, 0.3); } 100% { opacity: 0; } }
         
-        /* Floating Damage Text Animation */
         @keyframes floatUp { 0% { transform: translateY(0); opacity: 1; } 100% { transform: translateY(-50px); opacity: 0; } }
         .damage-text { position: absolute; font-weight: 900; animation: floatUp 1s ease-out forwards; text-shadow: 2px 2px 0 #000; pointer-events: none; z-index: 50; }
     </style>
@@ -72,7 +70,7 @@
 
     <div id="app" class="overflow-hidden">
 
-        <!-- Character Creation (Same as before) -->
+        <!-- Character Creation -->
         <div id="creation-screen" class="flex-grow flex items-center justify-center p-4 w-full h-full overflow-y-auto">
             <div class="glass-panel w-full max-w-md rounded-xl p-8 my-auto">
                 <h1 class="text-3xl font-bold text-center text-white mb-6">Create Your Legacy</h1>
@@ -104,6 +102,9 @@
                     <div id="api-key-container" class="hidden mt-2">
                          <input type="password" id="user-api-key" class="w-full px-2 py-1 bg-gray-900 border border-gray-700 rounded text-xs text-white" placeholder="Gemini Key (Blank for Offline)">
                     </div>
+                    <div class="mt-4 pt-4 border-t border-gray-700">
+                        <button onclick="loadGame()" class="text-sm text-blue-400 hover:text-blue-300 font-medium">📂 Load Saved Game</button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -112,12 +113,17 @@
         <div id="hub-screen" class="hidden h-full flex flex-col overflow-hidden">
             <header class="glass-panel z-20 flex-shrink-0 border-b border-gray-700">
                 <div class="container mx-auto px-4 py-3 flex flex-wrap justify-between items-center">
-                    <h1 id="hub-player-name" class="text-xl md:text-2xl font-bold text-white tracking-tight">Player</h1>
+                    <div class="flex items-center gap-4">
+                        <h1 id="hub-player-name" class="text-xl md:text-2xl font-bold text-white tracking-tight">Player</h1>
+                    </div>
                     <div class="flex items-center space-x-4 text-sm font-medium">
                         <span class="text-purple-400 font-bold" id="hub-league">Amateur Circuit</span>
                         <span class="text-gray-300" id="hub-date">Week 1</span>
                         <span class="text-green-400" id="hub-money">$500</span>
                         <span class="text-blue-300" id="hub-record">0-0-0</span>
+                        <div class="border-l border-gray-600 pl-4 ml-2">
+                            <button onclick="saveGame()" class="text-gray-400 hover:text-white mr-2" title="Save Game">💾</button>
+                        </div>
                     </div>
                 </div>
             </header>
@@ -167,9 +173,9 @@
             </div>
         </div>
 
-        <!-- MATCH ENGINE UI (Initially Hidden) -->
+        <!-- MATCH ENGINE UI -->
         <div id="match-screen" class="hidden absolute inset-0 z-30 flex flex-col justify-between pointer-events-none">
-            <!-- Top Bar: Names & Round -->
+            <!-- Top Bar -->
             <div class="bg-black/60 backdrop-blur-md p-4 flex justify-between items-center text-white border-b border-white/10 pointer-events-auto">
                 <div class="w-1/3">
                     <div class="text-2xl font-bold text-blue-400" id="match-p1-name">Player</div>
@@ -188,8 +194,7 @@
                     </div>
                 </div>
             </div>
-
-            <!-- Bottom Bar: Commentary -->
+            <!-- Commentary -->
             <div class="p-6 pointer-events-auto">
                 <div class="bg-black/80 backdrop-blur-md rounded-xl p-4 border border-white/10 max-w-3xl mx-auto">
                     <div id="match-commentary" class="text-lg text-center font-medium text-white h-8 transition-all">
@@ -197,8 +202,6 @@
                     </div>
                 </div>
             </div>
-            
-            <!-- Damage Text Container (Invisible layer) -->
             <div id="damage-overlay" class="absolute inset-0 pointer-events-none overflow-hidden"></div>
         </div>
 
@@ -246,19 +249,19 @@
             <button onclick="endMatch()" class="w-full py-3 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-lg">Return to Gym</button>
         </div>
 
-        <!-- Generic / Events -->
-        <div id="modal-event" class="modal-content hidden w-full max-w-md rounded-2xl p-6 text-center">
-            <h2 id="event-title" class="text-2xl font-bold text-white mb-2">Event</h2>
-            <p id="event-description" class="text-gray-300 mb-6">--</p>
-            <button onclick="closeModal(finishWeek)" class="px-8 py-2 bg-blue-600 rounded-lg text-white font-bold">OK</button>
-        </div>
-        
         <!-- Promotion Event -->
         <div id="modal-promotion" class="modal-content hidden w-full max-w-md rounded-2xl p-8 text-center border-2 border-purple-500 bg-gray-900">
             <div class="text-4xl mb-4">🏆</div>
             <h2 class="text-3xl font-black text-purple-400 mb-2">PROMOTION!</h2>
             <p class="text-gray-300 mb-6 text-lg" id="promotion-text">You have been invited to join the next league!</p>
             <button onclick="closeModal(finishWeek)" class="w-full py-3 bg-purple-600 hover:bg-purple-500 text-white font-bold rounded-lg">Accept Offer</button>
+        </div>
+
+        <!-- Generic / Events -->
+        <div id="modal-event" class="modal-content hidden w-full max-w-md rounded-2xl p-6 text-center">
+            <h2 id="event-title" class="text-2xl font-bold text-white mb-2">Event</h2>
+            <p id="event-description" class="text-gray-300 mb-6">--</p>
+            <button onclick="closeModal(finishWeek)" class="px-8 py-2 bg-blue-600 rounded-lg text-white font-bold">OK</button>
         </div>
 
         <!-- Hype/Scout Modals -->
@@ -272,7 +275,7 @@
     </div>
 
     <script>
-        // --- 3D SCENE & FIGHTERS ---
+        // --- 3D SCENE ---
         let scene, camera, renderer, bgCanvas;
         let playerMesh, opponentMesh;
         let cameraTargetPos = new THREE.Vector3(0, 4, 15); 
@@ -294,34 +297,24 @@
             renderer.setSize(window.innerWidth, window.innerHeight);
             renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 
-            // Lights
             const amb = new THREE.AmbientLight(0x404040, 3); scene.add(amb);
             const spot = new THREE.SpotLight(0xffffff, 1, 50, 0.5, 0.5, 1);
             spot.position.set(0, 20, 0); spot.lookAt(0,0,0); scene.add(spot);
 
-            // Ring Floor
             const floor = new THREE.Mesh(new THREE.PlaneGeometry(16, 16), new THREE.MeshStandardMaterial({ color: 0x1f2937, roughness: 0.4 }));
             floor.rotation.x = -Math.PI / 2; floor.position.y = -2; scene.add(floor);
             
-            // Ropes
             const postGeo = new THREE.CylinderGeometry(0.1, 0.1, 4);
             const postMat = new THREE.MeshStandardMaterial({ color: 0x9ca3af });
             [ [4, -2, 4], [-4, -2, 4], [4, -2, -4], [-4, -2, -4] ].forEach(p => {
                 const m = new THREE.Mesh(postGeo, postMat); m.position.set(...p); m.position.y += 2; scene.add(m);
             });
 
-            // FIGHTERS - CYLINDERS
             const fighterGeo = new THREE.CylinderGeometry(0.5, 0.5, 1.8, 8);
-            
-            // Player (Blue)
             playerMesh = new THREE.Mesh(fighterGeo, new THREE.MeshStandardMaterial({ color: 0x3b82f6 }));
-            playerMesh.position.set(-2, -0.1, 0); 
-            scene.add(playerMesh);
-
-            // Opponent (Red)
+            playerMesh.position.set(-2, -0.1, 0); scene.add(playerMesh);
             opponentMesh = new THREE.Mesh(fighterGeo, new THREE.MeshStandardMaterial({ color: 0xef4444 }));
-            opponentMesh.position.set(2, -0.1, 0); 
-            scene.add(opponentMesh);
+            opponentMesh.position.set(2, -0.1, 0); scene.add(opponentMesh);
 
             window.addEventListener('resize', onWindowResize, false);
             animate();
@@ -336,11 +329,8 @@
 
         function animate() {
             requestAnimationFrame(animate);
-            // Smooth Camera
             camera.position.lerp(cameraTargetPos, 0.05);
             camera.lookAt(0, 0, 0);
-            
-            // Idle Animation
             if (isFighting && playerMesh && opponentMesh) {
                 const time = Date.now() * 0.005;
                 playerMesh.position.y = -0.1 + Math.sin(time) * 0.05;
@@ -353,14 +343,11 @@
         function animateAttack(attacker, target) {
             const originalPos = attacker.position.x;
             const direction = attacker === playerMesh ? 1 : -1;
-            
             let start = Date.now();
             let anim = setInterval(() => {
                 let p = (Date.now() - start) / 150;
-                if (p > 1) {
-                    clearInterval(anim);
-                    attacker.position.x = originalPos;
-                } else {
+                if (p > 1) { clearInterval(anim); attacker.position.x = originalPos; } 
+                else {
                     if (p < 0.5) attacker.position.x = originalPos + (direction * 1.5 * (p * 2));
                     else attacker.position.x = originalPos + (direction * 1.5 * ((1-p) * 2));
                 }
@@ -370,35 +357,23 @@
         function animateHit(mesh) {
             const originalColor = mesh.material.color.getHex();
             mesh.material.color.setHex(0xffffff);
-            setTimeout(() => {
-                mesh.material.color.setHex(originalColor);
-            }, 100);
-            mesh.position.z += 0.2;
-            setTimeout(() => mesh.position.z -= 0.2, 50);
+            setTimeout(() => { mesh.material.color.setHex(originalColor); }, 100);
+            mesh.position.z += 0.2; setTimeout(() => mesh.position.z -= 0.2, 50);
         }
 
         function showDamageText(amount, targetMesh) {
             const div = document.createElement('div');
             div.className = 'damage-text text-4xl text-red-500';
             div.innerText = amount;
-            
-            const vec = targetMesh.position.clone();
-            vec.y += 2;
-            vec.project(camera);
-            
+            const vec = targetMesh.position.clone(); vec.y += 2; vec.project(camera);
             const x = (vec.x * .5 + .5) * window.innerWidth;
             const y = (-(vec.y * .5) + .5) * window.innerHeight;
-            
-            div.style.left = x + 'px';
-            div.style.top = y + 'px';
-            
+            div.style.left = x + 'px'; div.style.top = y + 'px';
             document.getElementById('damage-overlay').appendChild(div);
             setTimeout(() => div.remove(), 1000);
         }
 
-
         // --- GAME STATE & LOGIC ---
-        // Leagues definition
         const LEAGUES = [
             { name: "Amateur Circuit", baseStat: 5, purse: 100, fameReq: 0 },
             { name: "Regional Pro", baseStat: 20, purse: 800, fameReq: 50 },
@@ -406,23 +381,93 @@
             { name: "World Championship", baseStat: 70, purse: 50000, fameReq: 500 }
         ];
 
-        let gameState = {
-            playerName: "",
-            discipline: "mma",
-            week: 1,
-            year: 2026,
-            stats: { money: 500, health: 100, maxHealth: 100, stamina: 100, striking: 10, grappling: 10, strength: 10, fame: 0 },
-            record: { w: 0, l: 0, d: 0 },
-            isBusy: false,
-            pendingAction: null,
-            isTakingDive: false,
-            isMobHelping: false,
-            matchState: { p1hp: 100, p2hp: 100, time: 180 },
-            leagueIndex: 0, // 0 = Amateur
-            mobDebt: 0 // NEW: Tracks how many times you used mob help
+        // DYNAMIC COMMENTARY DATA
+        const COMMENTARY_DATA = {
+            'muay-thai': {
+                hit: ["Crushing leg kick!", "Teep to the face!", "Knee in the clinch!", "Elbow slice!", "Body kick connects!"],
+                miss: ["Kick blocked!", "Swing and a miss!", "Teep caught!", "Ducked the elbow!"],
+                ko: ["HEAD KICK KNOCKOUT!", "KNEE TO THE CHIN! GOODNIGHT!", "ELBOW CUT! REF STOPS IT!"]
+            },
+            'mma': {
+                hit: ["Overhand right connects!", "Takedown slam!", "Ground and pound!", "Spinning backfist!", "Uppercut from the clinch!"],
+                miss: ["Takedown stuffed!", "Wild swing misses!", "Slipped the punch!", "Sprawled successfully!"],
+                ko: ["KNOCKOUT!", "SUBMISSION! HE TAPPED!", "REF STOPS THE FIGHT! TKO!"]
+            },
+            'boxing': {
+                hit: ["Stiff jab!", "Right cross!", "Left hook to the body!", "Uppercut!", "1-2 combo lands!"],
+                miss: ["Slipped!", "Parried!", "Blocked on the gloves!", "Head movement!"],
+                ko: ["DOWN FOR THE COUNT!", "LIGHTS OUT! KO!", "CORNER THROWS THE TOWEL!"]
+            },
+            'bjj': {
+                hit: ["Takedown successful!", "Passed guard!", "Knee on belly!", "Took the back!", "Tight squeeze!"],
+                miss: ["Guard retained!", "Escaped the submission!", "Scramble!", "Bridged out!"],
+                ko: ["CHOKED OUT!", "SNAP! SUBMISSION!", "HE TAPPED!"]
+            }
         };
 
-        // --- SETUP ---
+        let gameState = {
+            playerName: "", discipline: "mma", week: 1, year: 2026,
+            stats: { money: 500, health: 100, maxHealth: 100, stamina: 100, striking: 10, grappling: 10, strength: 10, fame: 0 },
+            record: { w: 0, l: 0, d: 0 },
+            isBusy: false, pendingAction: null, isTakingDive: false, isMobHelping: false,
+            matchState: { p1hp: 100, p2hp: 100, time: 180 }, leagueIndex: 0, mobDebt: 0
+        };
+
+        // --- MOCK DATA ---
+        const mockHype = [
+            "Just wrapped up camp. I'm a different animal. #AndNew 🦁",
+            "They say he's tough. I say I'm inevitable. 💥👊",
+            "Don't blink. It won't last long. ⚡️",
+            "Hard work beats talent when talent doesn't work hard. See you Saturday.",
+            "Weight cut done. Now we eat. Then we feast in the cage. 🥩",
+            "Respect to the opponent, but I'm taking that head off. 💀",
+            "My legacy starts now. Watch me work. #FutureChamp"
+        ];
+        
+        const mockScouting = [
+            "He's heavy on the front foot. Leg kicks will destroy him.",
+            "Weak takedown defense. Put him on his back immediately.",
+            "He gasses out after round 1. Weather the storm then attack.",
+            "Dangerous left hook. Keep your right hand glued to your chin.",
+            "He's a headhunter. Work the body to slow him down."
+        ];
+
+        // --- SAVE/LOAD SYSTEM ---
+        function saveGame() {
+            try {
+                localStorage.setItem('maManagerSave', JSON.stringify(gameState));
+                addLog("💾 Game Saved Successfully!");
+                alert("Game Saved!");
+            } catch (e) {
+                alert("Failed to save game.");
+            }
+        }
+
+        function loadGame() {
+            const saved = localStorage.getItem('maManagerSave');
+            if (saved) {
+                try {
+                    gameState = JSON.parse(saved);
+                    addLog("📂 Game Loaded!");
+                    
+                    // Restore UI State
+                    document.getElementById('creation-screen').classList.add('hidden');
+                    document.getElementById('hub-screen').classList.remove('hidden');
+                    
+                    // Restore Camera
+                    cameraTargetPos.set(0, 4, 15);
+                    
+                    // Refresh Hub UI
+                    updateUI();
+                } catch (e) {
+                    alert("Save file corrupted.");
+                }
+            } else {
+                alert("No save game found.");
+            }
+        }
+
+        // --- SETUP & CORE ---
         function selectPath() {
             document.getElementById('discipline-select').classList.remove('hidden');
             document.getElementById('start-game-btn').disabled = false;
@@ -430,35 +475,34 @@
         function toggleApiKey() { document.getElementById('api-key-container').classList.toggle('hidden'); }
         
         function startGame() {
-            const name = document.getElementById('player-name').value || "Fighter";
+            const name = document.getElementById('player-name').value;
+            if(!name) { alert("Name required"); return; }
             gameState.playerName = name;
             gameState.discipline = document.getElementById('fighter-discipline').value;
             
             if (gameState.discipline === 'muay-thai') gameState.stats.striking += 5;
             if (gameState.discipline === 'bjj') gameState.stats.grappling += 5;
-            
+            if (gameState.discipline === 'boxing') { gameState.stats.striking += 3; gameState.stats.stamina += 10; }
+            if (gameState.discipline === 'mma') { gameState.stats.striking += 2; gameState.stats.grappling += 2; }
+
             document.getElementById('creation-screen').classList.add('hidden');
             document.getElementById('hub-screen').classList.remove('hidden');
             updateUI();
-            
             cameraTargetPos.set(0, 4, 15);
         }
 
-        // --- ACTIONS ---
         function performAction(action) {
             if (gameState.isBusy) return;
             gameState.isBusy = true;
 
             if (action === 'find-fight') {
-                // Generate Opponent with SCALING
                 const currentLeague = LEAGUES[gameState.leagueIndex];
                 const variance = Math.floor(Math.random() * 10);
                 const difficulty = currentLeague.baseStat + variance + (gameState.record.w * 0.5); 
                 
                 gameState.opponent = {
-                    name: "Rival #" + Math.floor(Math.random()*100),
-                    str: Math.floor(difficulty), 
-                    grp: Math.floor(difficulty),
+                    name: "Rival #" + Math.floor(Math.random()*1000),
+                    str: Math.floor(difficulty), grp: Math.floor(difficulty),
                     purse: currentLeague.purse + (gameState.stats.fame * 10)
                 };
                 
@@ -473,7 +517,8 @@
             }
             
             if (action === 'promote') {
-                callAI("Generate a hype tweet for fighter " + gameState.playerName).then(txt => {
+                // Ensure Offline Fallback Logic works correctly here
+                callAI("Generate a viral tweet for fighter " + gameState.playerName).then(txt => {
                     document.getElementById('ai-title').innerText = "📣 Viral Tweet";
                     document.getElementById('ai-text').innerText = txt;
                     showModal('modal-ai-content');
@@ -485,7 +530,6 @@
 
             document.getElementById('action-busy').classList.remove('hidden');
             document.getElementById('action-buttons').classList.add('hidden');
-            
             setTimeout(() => {
                 if (action.includes('train')) {
                     gameState.stats.stamina -= 20; gameState.stats.money -= 50;
@@ -505,32 +549,26 @@
             gameState.isBusy = false;
             gameState.week++;
             gameState.stats.money -= 20;
-            
-            // Check Promotion
             checkLeaguePromotion();
-            
             updateUI();
             document.getElementById('action-busy').classList.add('hidden');
             document.getElementById('action-buttons').classList.remove('hidden');
         }
 
-        function advanceWeek() { finishAction(); }
-        
-        // --- NEW LOGIC: LEAGUES & MOB ---
         function checkLeaguePromotion() {
             const nextIndex = gameState.leagueIndex + 1;
             if (nextIndex < LEAGUES.length) {
                 const nextLeague = LEAGUES[nextIndex];
                 if (gameState.stats.fame >= nextLeague.fameReq) {
-                    // Trigger promotion
                     gameState.leagueIndex++;
-                    document.getElementById('promotion-text').innerText = `You've reached ${gameState.stats.fame} Fame! You are invited to the ${nextLeague.name}. Opponents will be harder, but purses are bigger.`;
+                    document.getElementById('promotion-text').innerText = `You've reached ${gameState.stats.fame} Fame! You are invited to the ${nextLeague.name}.`;
                     showModal('modal-promotion');
                 }
             }
         }
+        function advanceWeek() { finishAction(); }
 
-        // --- AI ---
+        // --- AI / FALLBACK ---
         async function scoutOpponent() {
             const btn = document.getElementById('scout-btn');
             btn.innerText = "Scouting...";
@@ -543,7 +581,14 @@
 
         async function callAI(prompt) {
             const key = document.getElementById('user-api-key').value;
-            if (!key) return "Offline Coach: He looks tough. Keep your hands up! (Add API Key for more)";
+            
+            // FORCE OFFLINE MODE IF NO KEY
+            if (!key) {
+                await new Promise(r => setTimeout(r, 500)); // Slight delay for realism
+                if (prompt.includes("viral tweet")) return mockHype[Math.floor(Math.random() * mockHype.length)];
+                return mockScouting[Math.floor(Math.random() * mockScouting.length)];
+            }
+
             try {
                 const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${key}`, {
                     method:'POST', headers:{'Content-Type':'application/json'},
@@ -552,21 +597,22 @@
                 if (!res.ok) throw new Error();
                 const data = await res.json();
                 return data.candidates[0].content.parts[0].text;
-            } catch(e) { return "Coach is busy (API Error)."; }
+            } catch(e) { 
+                // Fallback if key is invalid
+                if (prompt.includes("viral tweet")) return mockHype[Math.floor(Math.random() * mockHype.length)];
+                return mockScouting[Math.floor(Math.random() * mockScouting.length)];
+            }
         }
-
 
         // --- MATCH ENGINE ---
         let matchInterval;
-        
         function acceptFight() { closeModal(); startMatch(); }
         function declineFight() { closeModal(); gameState.isBusy = false; }
 
         function startMatch() {
             document.getElementById('hub-screen').classList.add('hidden');
             document.getElementById('match-screen').classList.remove('hidden');
-            
-            cameraTargetPos.set(0, 2, 8); // Zoom in
+            cameraTargetPos.set(0, 2, 8);
             
             gameState.matchState = { p1hp: 100, p2hp: 100, time: 180 };
             isFighting = true;
@@ -584,22 +630,17 @@
         function gameLoop() {
             const ms = gameState.matchState;
             ms.time -= 5;
-            
             const p1Turn = Math.random() > 0.5;
             const attacker = p1Turn ? playerMesh : opponentMesh;
             const defender = p1Turn ? opponentMesh : playerMesh;
-
-            animateAttack(attacker, defender);
             
-            // Calculate Hit Logic based on stats + randomness
+            animateAttack(attacker, defender);
+
             const p1Stats = gameState.stats;
             const p2Stats = gameState.opponent;
-            
-            // If mob help is active, player gets huge boost
             const p1Power = p1Stats.striking + p1Stats.grappling + (gameState.isMobHelping ? 50 : 0);
             const p2Power = p2Stats.str + p2Stats.grp;
             
-            // If taking a dive, player misses a lot
             let hitChance = 0.5;
             if (p1Turn && gameState.isTakingDive) hitChance = 0.1; 
             else if (p1Turn && p1Power > p2Power) hitChance = 0.7;
@@ -607,18 +648,22 @@
 
             if (Math.random() < hitChance) { 
                 const damage = 5 + Math.floor(Math.random() * 10);
-                
                 setTimeout(() => {
                     animateHit(defender);
                     showDamageText(damage, defender);
-                    
                     if (p1Turn) ms.p2hp -= damage; else ms.p1hp -= damage;
                     updateMatchUI();
-                    setCommentary(p1Turn ? "Clean hit!" : "Counter strike!");
+                    
+                    // DYNAMIC COMMENTARY
+                    const comms = COMMENTARY_DATA[gameState.discipline] || COMMENTARY_DATA['mma'];
+                    const phrase = p1Turn ? comms.hit[Math.floor(Math.random() * comms.hit.length)] : "Opponent lands a hit!";
+                    setCommentary(phrase);
+                    
                     checkKO();
                 }, 300);
             } else {
-                 setCommentary("Missed!");
+                 const comms = COMMENTARY_DATA[gameState.discipline] || COMMENTARY_DATA['mma'];
+                 setCommentary(comms.miss[Math.floor(Math.random() * comms.miss.length)]);
             }
 
             if (ms.time <= 0) endRound();
@@ -630,13 +675,13 @@
             if (ms.p1hp <= 0 || ms.p2hp <= 0) {
                 clearInterval(matchInterval);
                 const winner = ms.p1hp > 0;
-                setCommentary(winner ? "KNOCKOUT!" : "YOU GOT KNOCKED OUT!");
                 
-                // KO Animation
+                const comms = COMMENTARY_DATA[gameState.discipline] || COMMENTARY_DATA['mma'];
+                setCommentary(winner ? comms.ko[Math.floor(Math.random() * comms.ko.length)] : "YOU GOT KNOCKED OUT!");
+
                 const loserMesh = winner ? opponentMesh : playerMesh;
                 loserMesh.rotation.z = winner ? Math.PI / 2 : -Math.PI / 2;
                 loserMesh.position.y = -1.5; 
-                
                 setTimeout(() => showPostMatch(winner), 2000);
             }
         }
@@ -653,12 +698,7 @@
             const title = document.getElementById('post-match-title');
             const desc = document.getElementById('post-match-desc');
             
-            // Reset Flags
-            if (gameState.isMobHelping) {
-                gameState.isMobHelping = false;
-                gameState.mobDebt++; // You owe them now
-                addLog("⚠️ You owe the mob a favor now.");
-            }
+            if (gameState.isMobHelping) { gameState.isMobHelping = false; gameState.mobDebt++; addLog("⚠️ Mob debt increased."); }
             gameState.isTakingDive = false;
 
             if (won) {
@@ -666,15 +706,14 @@
                 desc.innerText = "Great performance!";
                 gameState.record.w++;
                 gameState.stats.money += gameState.opponent.purse;
-                gameState.stats.fame += 5; // Fame helps promotion
+                gameState.stats.fame += 5;
             } else {
                 title.innerText = "DEFEAT"; title.className = "text-4xl font-black mb-2 text-red-500";
                 desc.innerText = "Back to the gym.";
                 gameState.record.l++;
                 gameState.stats.money += Math.floor(gameState.opponent.purse / 4);
             }
-            
-            cameraTargetPos.set(0, 4, 15); // Camera back
+            cameraTargetPos.set(0, 4, 15);
             showModal('modal-post-match');
         }
 
@@ -700,73 +739,20 @@
             setTimeout(() => { el.innerText = text; el.style.opacity = 1; }, 100);
         }
 
-        // --- UTILS ---
         function updateUI() {
-            // Update League Info
             const currentLeague = LEAGUES[gameState.leagueIndex];
             document.getElementById('hub-league').innerText = currentLeague.name;
-            
             document.getElementById('hub-player-name').innerText = gameState.playerName;
             document.getElementById('hub-date').innerText = `Week ${gameState.week}`;
             document.getElementById('hub-money').innerText = "$" + gameState.stats.money;
             document.getElementById('hub-record').innerText = `${gameState.record.w}-${gameState.record.l}-${gameState.record.d}`;
             
-            // Safe Update for Stats Text
             const safeSet = (id, val) => { if(document.getElementById(id)) document.getElementById(id).innerText = val; };
             const safeStyle = (id, val) => { if(document.getElementById(id)) document.getElementById(id).style.width = val + "%"; };
-
-            safeSet('stat-health-text', `${gameState.stats.health}/100`);
-            safeStyle('stat-health-bar', gameState.stats.health);
-            
-            safeSet('stat-stamina-text', `${gameState.stats.stamina}/100`);
-            safeStyle('stat-stamina-bar', gameState.stats.stamina);
-            
-            safeSet('stat-striking', gameState.stats.striking);
-            safeSet('stat-grappling', gameState.stats.grappling);
-            safeSet('stat-strength', gameState.stats.strength);
-            safeSet('stat-fame', gameState.stats.fame);
-        }
-
-        // --- Random Events (Includes Mob Collection) ---
-        function handleRandomEvent() {
-            if (gameState.stats.money < -200) {
-                document.getElementById('game-over-title').innerText = "BANKRUPT";
-                document.getElementById('game-over-description').innerText = "You cannot afford to live. Game Over.";
-                showModal('modal-game-over');
-                return;
-            }
-            
-            // Mob Collection Logic
-            if (gameState.mobDebt > 0 && Math.random() < 0.3) {
-                showModal('modal-event');
-                document.getElementById('event-title').innerText = "🕵️ The Collector";
-                document.getElementById('event-description').innerText = "The mob came to collect their debt. They beat you up and took cash.";
-                gameState.stats.health = Math.max(5, gameState.stats.health - 30);
-                gameState.stats.money -= 500;
-                gameState.mobDebt--; // Debt paid in pain
-                addLog("⚠️ Mob collected debt. -30 HP, -$500.");
-                return;
-            }
-
-            if (Math.random() < 0.15) {
-                const type = Math.random();
-                showModal('modal-event');
-                const title = document.getElementById('event-title');
-                const desc = document.getElementById('event-description');
-                
-                if (type < 0.33) {
-                    title.innerText = "Minor Injury"; desc.innerText = "You tweaked an ankle. -10 Health.";
-                    gameState.stats.health -= 10;
-                } else if (type < 0.66) {
-                    title.innerText = "Sponsorship"; desc.innerText = "Local gym sponsored you! +$150.";
-                    gameState.stats.money += 150;
-                } else {
-                    title.innerText = "Bad Sleep"; desc.innerText = "Insomnia strikes. -10 Stamina.";
-                    gameState.stats.stamina -= 10;
-                }
-            } else {
-                finishWeek();
-            }
+            safeSet('stat-health-text', `${gameState.stats.health}/100`); safeStyle('stat-health-bar', gameState.stats.health);
+            safeSet('stat-stamina-text', `${gameState.stats.stamina}/100`); safeStyle('stat-stamina-bar', gameState.stats.stamina);
+            safeSet('stat-striking', gameState.stats.striking); safeSet('stat-grappling', gameState.stats.grappling);
+            safeSet('stat-strength', gameState.stats.strength); safeSet('stat-fame', gameState.stats.fame);
         }
 
         function showModal(id) {
@@ -778,7 +764,7 @@
         function closeModal(cb) {
             document.getElementById('modal-backdrop').classList.add('hidden');
             document.getElementById('modal-container').classList.add('hidden');
-            if(cb) cb();
+            if(cb && typeof cb === 'function') cb();
         }
         function addLog(msg) {
             const d = document.createElement('div');
@@ -786,24 +772,8 @@
             d.innerText = `[W${gameState.week}] ${msg}`;
             document.getElementById('event-log').prepend(d);
         }
-        
-        // --- Mob Handlers ---
-        function acceptMobHelp() { 
-            gameState.isMobHelping = true; 
-            addLog("🤝 You accepted mob help.");
-            closeModal(() => runFightSim(false, true)); 
-        }
-        function refuseMobHelp() { closeModal(() => runFightSim()); }
-        function acceptBribe() { gameState.isTakingDive = true; gameState.stats.money += 1000; addLog("💰 Accepted bribe."); closeModal(() => runFightSim(true)); }
-        function refuseBribe() { closeModal(() => runFightSim()); }
 
-
-        // INIT
-        window.onload = () => {
-            initThree();
-            // Force resize to ensure canvas fits
-            setTimeout(onWindowResize, 100);
-        };
+        window.onload = () => { initThree(); setTimeout(onWindowResize, 100); };
     </script>
 </body>
 </html>

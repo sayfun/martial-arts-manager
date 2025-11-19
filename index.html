@@ -62,6 +62,11 @@
         
         @keyframes floatUp { 0% { transform: translateY(0); opacity: 1; } 100% { transform: translateY(-50px); opacity: 0; } }
         .damage-text { position: absolute; font-weight: 900; animation: floatUp 1s ease-out forwards; text-shadow: 2px 2px 0 #000; pointer-events: none; z-index: 50; }
+        
+        /* Toast Notification */
+        #toast {
+            transition: opacity 0.5s ease-in-out;
+        }
     </style>
 </head>
 <body class="h-full">
@@ -84,7 +89,15 @@
                         <button onclick="selectPath('fighter')" class="career-path-btn flex flex-col items-center justify-center p-4 bg-gray-800 rounded-lg border border-gray-700 hover:bg-blue-600 hover:text-white transition-all group">
                             <span class="text-2xl mb-2">🥊</span><span class="font-medium">Fighter</span>
                         </button>
-                        <button disabled class="flex flex-col items-center justify-center p-4 bg-gray-900 rounded-lg border border-gray-800 opacity-50 cursor-not-allowed"><span class="text-sm">Coach (Soon)</span></button>
+                        <button disabled class="flex flex-col items-center justify-center p-4 bg-gray-900 rounded-lg border border-gray-800 opacity-50 cursor-not-allowed">
+                            <span class="text-2xl mb-2">📋</span><span class="text-sm font-medium text-gray-500">Coach</span>
+                        </button>
+                        <button disabled class="flex flex-col items-center justify-center p-4 bg-gray-900 rounded-lg border border-gray-800 opacity-50 cursor-not-allowed">
+                            <span class="text-2xl mb-2">💼</span><span class="text-sm font-medium text-gray-500">Manager</span>
+                        </button>
+                        <button disabled class="flex flex-col items-center justify-center p-4 bg-gray-900 rounded-lg border border-gray-800 opacity-50 cursor-not-allowed">
+                            <span class="text-2xl mb-2">📢</span><span class="text-sm font-medium text-gray-500">Promoter</span>
+                        </button>
                     </div>
                 </div>
                 <div id="discipline-select" class="mb-6 hidden">
@@ -102,8 +115,10 @@
                     <div id="api-key-container" class="hidden mt-2">
                          <input type="password" id="user-api-key" class="w-full px-2 py-1 bg-gray-900 border border-gray-700 rounded text-xs text-white" placeholder="Gemini Key (Blank for Offline)">
                     </div>
-                    <div class="mt-4 pt-4 border-t border-gray-700">
-                        <button onclick="loadGame()" class="text-sm text-blue-400 hover:text-blue-300 font-medium">📂 Load Saved Game</button>
+                    <div class="mt-6 border-t border-gray-700 pt-4">
+                        <button onclick="loadGame()" class="w-full py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg font-medium flex items-center justify-center gap-2">
+                            <span>📂</span> Load Saved Game
+                        </button>
                     </div>
                 </div>
             </div>
@@ -117,12 +132,14 @@
                         <h1 id="hub-player-name" class="text-xl md:text-2xl font-bold text-white tracking-tight">Player</h1>
                     </div>
                     <div class="flex items-center space-x-4 text-sm font-medium">
-                        <span class="text-purple-400 font-bold" id="hub-league">Amateur Circuit</span>
+                        <span class="text-purple-400 font-bold hidden md:inline" id="hub-league">Amateur Circuit</span>
                         <span class="text-gray-300" id="hub-date">Week 1</span>
                         <span class="text-green-400" id="hub-money">$500</span>
                         <span class="text-blue-300" id="hub-record">0-0-0</span>
                         <div class="border-l border-gray-600 pl-4 ml-2">
-                            <button onclick="saveGame()" class="text-gray-400 hover:text-white mr-2" title="Save Game">💾</button>
+                            <button onclick="saveGame()" class="text-gray-300 hover:text-white bg-gray-800 hover:bg-gray-700 px-3 py-1 rounded transition-colors text-xs flex items-center gap-1">
+                                <span>💾</span> Save
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -203,6 +220,11 @@
                 </div>
             </div>
             <div id="damage-overlay" class="absolute inset-0 pointer-events-none overflow-hidden"></div>
+        </div>
+
+        <!-- TOAST -->
+        <div id="toast" class="fixed bottom-4 right-4 bg-green-600 text-white px-4 py-2 rounded shadow-lg opacity-0 pointer-events-none z-50">
+            Game Saved!
         </div>
 
     </div>
@@ -382,27 +404,23 @@
         ];
 
         // DYNAMIC COMMENTARY DATA
-        const COMMENTARY_DATA = {
-            'muay-thai': {
-                hit: ["Crushing leg kick!", "Teep to the face!", "Knee in the clinch!", "Elbow slice!", "Body kick connects!"],
-                miss: ["Kick blocked!", "Swing and a miss!", "Teep caught!", "Ducked the elbow!"],
-                ko: ["HEAD KICK KNOCKOUT!", "KNEE TO THE CHIN! GOODNIGHT!", "ELBOW CUT! REF STOPS IT!"]
-            },
-            'mma': {
-                hit: ["Overhand right connects!", "Takedown slam!", "Ground and pound!", "Spinning backfist!", "Uppercut from the clinch!"],
-                miss: ["Takedown stuffed!", "Wild swing misses!", "Slipped the punch!", "Sprawled successfully!"],
-                ko: ["KNOCKOUT!", "SUBMISSION! HE TAPPED!", "REF STOPS THE FIGHT! TKO!"]
-            },
-            'boxing': {
-                hit: ["Stiff jab!", "Right cross!", "Left hook to the body!", "Uppercut!", "1-2 combo lands!"],
-                miss: ["Slipped!", "Parried!", "Blocked on the gloves!", "Head movement!"],
-                ko: ["DOWN FOR THE COUNT!", "LIGHTS OUT! KO!", "CORNER THROWS THE TOWEL!"]
-            },
-            'bjj': {
-                hit: ["Takedown successful!", "Passed guard!", "Knee on belly!", "Took the back!", "Tight squeeze!"],
-                miss: ["Guard retained!", "Escaped the submission!", "Scramble!", "Bridged out!"],
-                ko: ["CHOKED OUT!", "SNAP! SUBMISSION!", "HE TAPPED!"]
-            }
+        const MOVES_DB = {
+            'muay-thai': [
+                "Crushing Leg Kick", "Teep to Face", "Knee in Clinch", "Spinning Elbow", "Flying Knee",
+                "Body Kick", "Sweep from Clinch", "Overhand Elbow", "Switch Kick"
+            ],
+            'mma': [
+                "Double Leg Takedown", "Superman Punch", "Spinning Backfist", "Calf Kick", "Guillotine Attempt",
+                "Ground & Pound", "High Kick", "Single Leg Slam", "Dirty Boxing"
+            ],
+            'boxing': [
+                "Stiff Jab", "Right Cross", "Left Hook to Body", "Uppercut", "Check Hook",
+                "Overhand Right", "1-2 Combo", "Liver Shot", "Counter Cross"
+            ],
+            'bjj': [
+                "Imanari Roll", "Heel Hook Attempt", "Triangle Choke", "Armbar", "Back Take",
+                "Guard Pass", "Kimura", "Omoplata Sweep", "Guillotine"
+            ]
         };
 
         let gameState = {
@@ -433,11 +451,17 @@
         ];
 
         // --- SAVE/LOAD SYSTEM ---
+        function showToast(msg) {
+            const t = document.getElementById('toast');
+            t.innerText = msg;
+            t.style.opacity = 1;
+            setTimeout(() => t.style.opacity = 0, 3000);
+        }
+
         function saveGame() {
             try {
                 localStorage.setItem('maManagerSave', JSON.stringify(gameState));
-                addLog("💾 Game Saved Successfully!");
-                alert("Game Saved!");
+                showToast("Game Saved! 💾");
             } catch (e) {
                 alert("Failed to save game.");
             }
@@ -448,16 +472,11 @@
             if (saved) {
                 try {
                     gameState = JSON.parse(saved);
-                    addLog("📂 Game Loaded!");
+                    showToast("Game Loaded! 📂");
                     
-                    // Restore UI State
                     document.getElementById('creation-screen').classList.add('hidden');
                     document.getElementById('hub-screen').classList.remove('hidden');
-                    
-                    // Restore Camera
                     cameraTargetPos.set(0, 4, 15);
-                    
-                    // Refresh Hub UI
                     updateUI();
                 } catch (e) {
                     alert("Save file corrupted.");
@@ -517,7 +536,6 @@
             }
             
             if (action === 'promote') {
-                // Ensure Offline Fallback Logic works correctly here
                 callAI("Generate a viral tweet for fighter " + gameState.playerName).then(txt => {
                     document.getElementById('ai-title').innerText = "📣 Viral Tweet";
                     document.getElementById('ai-text').innerText = txt;
@@ -582,9 +600,8 @@
         async function callAI(prompt) {
             const key = document.getElementById('user-api-key').value;
             
-            // FORCE OFFLINE MODE IF NO KEY
             if (!key) {
-                await new Promise(r => setTimeout(r, 500)); // Slight delay for realism
+                await new Promise(r => setTimeout(r, 500));
                 if (prompt.includes("viral tweet")) return mockHype[Math.floor(Math.random() * mockHype.length)];
                 return mockScouting[Math.floor(Math.random() * mockScouting.length)];
             }
@@ -598,7 +615,6 @@
                 const data = await res.json();
                 return data.candidates[0].content.parts[0].text;
             } catch(e) { 
-                // Fallback if key is invalid
                 if (prompt.includes("viral tweet")) return mockHype[Math.floor(Math.random() * mockHype.length)];
                 return mockScouting[Math.floor(Math.random() * mockScouting.length)];
             }
@@ -654,16 +670,16 @@
                     if (p1Turn) ms.p2hp -= damage; else ms.p1hp -= damage;
                     updateMatchUI();
                     
-                    // DYNAMIC COMMENTARY
-                    const comms = COMMENTARY_DATA[gameState.discipline] || COMMENTARY_DATA['mma'];
-                    const phrase = p1Turn ? comms.hit[Math.floor(Math.random() * comms.hit.length)] : "Opponent lands a hit!";
-                    setCommentary(phrase);
+                    // --- DYNAMIC MOVE COMMENTARY ---
+                    const moves = MOVES_DB[gameState.discipline] || MOVES_DB['mma'];
+                    const move = moves[Math.floor(Math.random() * moves.length)];
+                    const attackerName = p1Turn ? gameState.playerName : gameState.opponent.name;
+                    setCommentary(`${attackerName} lands a ${move}!`);
                     
                     checkKO();
                 }, 300);
             } else {
-                 const comms = COMMENTARY_DATA[gameState.discipline] || COMMENTARY_DATA['mma'];
-                 setCommentary(comms.miss[Math.floor(Math.random() * comms.miss.length)]);
+                 setCommentary("Missed swing!");
             }
 
             if (ms.time <= 0) endRound();
@@ -675,9 +691,7 @@
             if (ms.p1hp <= 0 || ms.p2hp <= 0) {
                 clearInterval(matchInterval);
                 const winner = ms.p1hp > 0;
-                
-                const comms = COMMENTARY_DATA[gameState.discipline] || COMMENTARY_DATA['mma'];
-                setCommentary(winner ? comms.ko[Math.floor(Math.random() * comms.ko.length)] : "YOU GOT KNOCKED OUT!");
+                setCommentary(winner ? "KNOCKOUT!" : "YOU GOT KNOCKED OUT!");
 
                 const loserMesh = winner ? opponentMesh : playerMesh;
                 loserMesh.rotation.z = winner ? Math.PI / 2 : -Math.PI / 2;
